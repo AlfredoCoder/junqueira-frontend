@@ -1,0 +1,230 @@
+"use client";
+
+import React, { useState } from 'react';
+import Container from '@/components/layout/Container';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Settings,
+  Save,
+  RefreshCw,
+  Shield,
+  Database,
+  Server,
+  Activity,
+  TrendingUp,
+  HardDrive,
+  Cpu,
+} from 'lucide-react';
+
+export default function SystemsettingsPage() {
+  const [systemName, setSystemName] = useState("Sistema Complexo Abilio Junqueira");
+  const [version, setVersion] = useState("2.1.0");
+  const [maintenance, setMaintenance] = useState(false);
+
+  return (
+    <Container>
+      {/* Header */}
+      <div className="relative overflow-hidden rounded-2xl bg-white border border-gray-200 p-8 mb-8 shadow-sm">
+        <div className="relative z-10">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-6 lg:space-y-0">
+            <div className="space-y-3">
+              <div className="flex items-center space-x-4">
+                <div className="h-16 w-16 bg-[#F9CD1D] rounded-2xl flex items-center justify-center shadow-md">
+                  <Settings className="h-8 w-8 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-4xl font-bold text-gray-900">
+                    Configurações do Sistema
+                  </h1>
+                  <p className="text-[#F9CD1D] font-semibold text-lg">Configurações Gerais do Sistema</p>
+                </div>
+              </div>
+              <p className="text-gray-600 text-sm max-w-2xl">
+                Configure as definições gerais do sistema, monitore o desempenho 
+                e gerencie as configurações de segurança e manutenção.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Decorative elements */}
+        <div className="absolute -top-16 -right-16 w-32 h-32 bg-[#D2B48C]/5 rounded-full"></div>
+        <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-gray-100 rounded-full"></div>
+      </div>
+
+      {/* Status Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-50 via-white to-emerald-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 shadow-sm">
+              <Activity className="h-6 w-6 text-white" />
+            </div>
+            <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
+              <Activity className="h-3 w-3 text-emerald-500" />
+              <span className="font-bold text-xs text-emerald-600">Online</span>
+            </div>
+          </div>
+          <div>
+            <p className="text-sm font-semibold mb-2 text-emerald-600">Status do Sistema</p>
+            <p className="text-3xl font-bold text-gray-900">Online</p>
+          </div>
+        </div>
+
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 via-white to-blue-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 rounded-xl bg-gradient-to-br from-[#182F59] to-[#1a3260] shadow-sm">
+              <Cpu className="h-6 w-6 text-white" />
+            </div>
+            <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
+              <TrendingUp className="h-3 w-3 text-blue-500" />
+              <span className="font-bold text-xs text-blue-600">Normal</span>
+            </div>
+          </div>
+          <div>
+            <p className="text-sm font-semibold mb-2 text-[#182F59]">Uso de CPU</p>
+            <p className="text-3xl font-bold text-gray-900">23%</p>
+          </div>
+        </div>
+
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-50 via-white to-yellow-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 rounded-xl bg-gradient-to-br from-[#FFD002] to-[#F5DEB3] shadow-sm">
+              <Database className="h-6 w-6 text-white" />
+            </div>
+            <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
+              <Activity className="h-3 w-3 text-yellow-500" />
+              <span className="font-bold text-xs text-yellow-600">45%</span>
+            </div>
+          </div>
+          <div>
+            <p className="text-sm font-semibold mb-2 text-[#FFD002]">Uso de Memória</p>
+            <p className="text-3xl font-bold text-gray-900">45%</p>
+          </div>
+        </div>
+
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-50 via-white to-purple-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 shadow-sm">
+              <HardDrive className="h-6 w-6 text-white" />
+            </div>
+            <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
+              <HardDrive className="h-3 w-3 text-purple-500" />
+              <span className="font-bold text-xs text-purple-600">67%</span>
+            </div>
+          </div>
+          <div>
+            <p className="text-sm font-semibold mb-2 text-purple-600">Espaço em Disco</p>
+            <p className="text-3xl font-bold text-gray-900">67%</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Configurações Gerais */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Settings className="h-5 w-5" />
+              <span>Configurações Gerais</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">
+                Nome do Sistema
+              </label>
+              <Input
+                value={systemName}
+                onChange={(e) => setSystemName(e.target.value)}
+                placeholder="Nome do sistema"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">
+                Versão
+              </label>
+              <Input
+                value={version}
+                onChange={(e) => setVersion(e.target.value)}
+                placeholder="Versão do sistema"
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div>
+                <p className="font-medium text-gray-900">Modo de Manutenção</p>
+                <p className="text-sm text-gray-500">Ativar modo de manutenção do sistema</p>
+              </div>
+              <Button
+                variant={maintenance ? "destructive" : "outline"}
+                size="sm"
+                onClick={() => setMaintenance(!maintenance)}
+              >
+                {maintenance ? "Desativar" : "Ativar"}
+              </Button>
+            </div>
+
+            <div className="pt-4">
+              <Button className="bg-[#F9CD1D] hover:bg-[#F9CD1D] text-white w-full">
+                <Save className="w-4 h-4 mr-2" />
+                Salvar Configurações
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Informações do Sistema */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Server className="h-5 w-5" />
+              <span>Informações do Sistema</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+              <span className="text-sm font-medium text-gray-600">Sistema Operacional</span>
+              <Badge variant="outline">Ubuntu 22.04 LTS</Badge>
+            </div>
+
+            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+              <span className="text-sm font-medium text-gray-600">Versão do Node.js</span>
+              <Badge variant="outline">18.17.0</Badge>
+            </div>
+
+            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+              <span className="text-sm font-medium text-gray-600">Base de Dados</span>
+              <Badge variant="outline">PostgreSQL 15.3</Badge>
+            </div>
+
+            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+              <span className="text-sm font-medium text-gray-600">Última Atualização</span>
+              <Badge variant="outline">15/09/2024</Badge>
+            </div>
+
+            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+              <span className="text-sm font-medium text-gray-600">Tempo de Atividade</span>
+              <Badge variant="outline" className="bg-emerald-100 text-emerald-800">15 dias</Badge>
+            </div>
+
+            <div className="pt-4">
+              <Button variant="outline" className="w-full">
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Atualizar Informações
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </Container>
+  );
+}

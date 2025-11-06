@@ -1,0 +1,229 @@
+"use client";
+
+import React, { useCallback } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertTriangle, CheckCircle, Loader2, XCircle } from 'lucide-react';
+
+interface ConfirmDeleteDisciplineModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConfirm: () => void;
+  discipline: {
+    codigo: number;
+    designacao: string;
+    status: number;
+    tb_cursos?: {
+      designacao: string;
+    }, []);
+  } | null;
+  loading: boolean;
+  error: string | null;
+  deleteResult: {
+    tipo?: 'cascade_delete' | 'soft_delete' | 'hard_delete';
+    detalhes?: Record<string, number | boolean | string>;
+    info?: string;
+  } | null;
+}
+
+export function ConfirmDeleteDisciplineModal({
+  open,
+  onOpenChange,
+  onConfirm,
+  discipline,
+  loading,
+  error,
+  deleteResult,
+}: ConfirmDeleteDisciplineModalProps) {
+  if (!discipline) return null;
+
+  const handleClose = useCallback(() => {
+    if (!loading) {
+      onOpenChange(false);
+    }
+  }, []);
+
+  // Se já temos o resultado, mostrar tela de sucesso
+  if (deleteResult) {
+    return (
+      <Dialog open={open} onOpenChange={handleClose}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2 text-green-600">
+              <CheckCircle className="h-5 w-5" />
+              <span>Disciplina Excluída com Sucesso!</span>
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4 ultra-fast-fade">
+            <Alert className="border-green-200 bg-green-50">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-800">
+                {deleteResult.info || 'A disciplina foi excluída com sucesso.'}
+              </AlertDescription>
+            </Alert>
+
+            {/* Detalhes da Exclusão */}
+            {deleteResult.detalhes && Object.keys(deleteResult.detalhes).length > 0 && (
+              <div className="space-y-3 ultra-fast-fade">
+                <h4 className="font-semibold text-sm text-gray-700">Detalhes da Exclusão:</h4>
+                
+                {/* Nome da Disciplina */}
+                {deleteResult.detalhes.disciplinaNome && (
+                  <div className="col-span-2 flex justify-between p-2 bg-gray-50 rounded">
+                    <span className="text-gray-600">Disciplina:</span>
+                    <span className="font-semibold text-gray-900">
+                      {String(deleteResult.detalhes.disciplinaNome)}
+                    </span>
+                  </div>
+                )}
+
+                {/* Nome do Curso */}
+                {deleteResult.detalhes.cursoNome && (
+                  <div className="col-span-2 flex justify-between p-2 bg-gray-50 rounded">
+                    <span className="text-gray-600">Curso:</span>
+                    <span className="font-semibold text-gray-900">
+                      {String(deleteResult.detalhes.cursoNome)}
+                    </span>
+                  </div>
+                )}
+
+                {/* Tipo de Exclusão */}
+                {deleteResult.tipo && (
+                  <div className="col-span-2 flex justify-between p-2 bg-blue-50 rounded">
+                    <span className="text-gray-600">Tipo de Exclusão:</span>
+                    <span className="font-semibold text-blue-900">
+                      {deleteResult.tipo === 'cascade_delete' && 'Exclusão em Cascata'}
+                      {deleteResult.tipo === 'soft_delete' && 'Exclusão Lógica'}
+                      {deleteResult.tipo === 'hard_delete' && 'Exclusão Permanente'}
+                    </span>
+                  </div>
+                )}
+
+                {/* Registros Excluídos (Exclusão em Cascata) */}
+                {deleteResult.tipo === 'cascade_delete' && (
+                  <div className="space-y-2 ultra-fast-fade">
+                    <h5 className="font-medium text-xs text-gray-600 uppercase">Registros Excluídos:</h5>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      {deleteResult.detalhes.gradeCurricular !== undefined && (
+                        <div className="flex justify-between p-2 bg-orange-50 rounded">
+                          <span className="text-gray-600">Grade Curricular:</span>
+                          <span className="font-semibold text-orange-700">
+                            {Number(deleteResult.detalhes.gradeCurricular)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button onClick={handleClose} className="w-full">
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center space-x-2 text-red-600">
+            <AlertTriangle className="h-5 w-5" />
+            <span>Confirmar Exclusão de Disciplina</span>
+          </DialogTitle>
+          <DialogDescription>
+            Esta ação não pode ser desfeita. A disciplina será excluída permanentemente.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-4 ultra-fast-fade">
+          {/* Informações da Disciplina */}
+          <div className="space-y-2 ultra-fast-fade">
+            <div className="flex justify-between p-3 bg-gray-50 rounded-lg">
+              <span className="text-sm font-medium text-gray-600">Nome da Disciplina:</span>
+              <span className="text-sm font-semibold text-gray-900">{discipline.designacao}</span>
+            </div>
+            <div className="flex justify-between p-3 bg-gray-50 rounded-lg">
+              <span className="text-sm font-medium text-gray-600">Curso:</span>
+              <span className="text-sm font-semibold text-gray-900">
+                {discipline.tb_cursos?.designacao || 'N/A'}
+              </span>
+            </div>
+            <div className="flex justify-between p-3 bg-gray-50 rounded-lg">
+              <span className="text-sm font-medium text-gray-600">Status:</span>
+              <span className={`text-sm font-semibold ${discipline.status === 1 ? 'text-green-600' : 'text-gray-600'}`}>
+                {discipline.status === 1 ? 'Ativa' : 'Inativa'}
+              </span>
+            </div>
+          </div>
+
+          {/* Aviso sobre Exclusão em Cascata */}
+          <Alert className="border-yellow-200 bg-yellow-50">
+            <AlertTriangle className="h-4 w-4 text-yellow-600" />
+            <AlertDescription className="text-yellow-800">
+              <strong>Exclusão em Cascata!</strong> Ao excluir esta disciplina, todos os dados associados serão removidos permanentemente,
+              incluindo itens na grade curricular.
+            </AlertDescription>
+          </Alert>
+
+          {/* Aviso de Exclusão Permanente */}
+          <Alert className="border-red-200 bg-red-50">
+            <XCircle className="h-4 w-4 text-red-600" />
+            <AlertDescription className="text-red-800">
+              <strong>Atenção!</strong> Esta ação não pode ser desfeita e removerá permanentemente a disciplina e todos os seus dados relacionados do sistema.
+            </AlertDescription>
+          </Alert>
+
+          {/* Erro */}
+          {error && (
+            <Alert variant="destructive">
+              <XCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+        </div>
+
+        <DialogFooter className="flex space-x-2">
+          <Button
+            variant="outline"
+            onClick={handleClose}
+            disabled={loading}
+            className="flex-1"
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={onConfirm}
+            disabled={loading}
+            className="flex-1"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin loading-spinner" />
+                Excluindo...
+              </>
+            ) : (
+              'Confirmar Exclusão'
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

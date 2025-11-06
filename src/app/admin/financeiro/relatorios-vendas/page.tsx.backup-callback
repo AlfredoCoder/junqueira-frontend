@@ -1,0 +1,246 @@
+'use client';
+
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { 
+  Download, 
+  TrendingUp, 
+  Users, 
+  DollarSign, 
+  RefreshCw,
+} from 'lucide-react';
+
+interface FuncionarioVenda {
+  codigo: number;
+  nome: string;
+  totalVendas: number;
+  quantidadeVendas: number;
+  ticketMedio: number;
+}
+
+interface RelatorioGeral {
+  totalGeral: number;
+  quantidadeTotal: number;
+  ticketMedioGeral: number;
+  funcionarios: FuncionarioVenda[];
+}
+
+const RelatoriosVendasPage = () => {
+  const [periodo, setPeriodo] = useState('diario');
+  const [loading, setLoading] = useState(false);
+  const [relatorioGeral, setRelatorioGeral] = useState<RelatorioGeral | null>(null);
+
+  const carregarRelatorio = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`http://localhost:8000/api/payment-management/relatorios/vendas-funcionarios?periodo=${periodo}`);
+      if (response.ok) {
+        const data = await response.json();
+        setRelatorioGeral(data.data);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar relatório:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [periodo]);
+
+  useEffect(() => {
+    carregarRelatorio();
+  }, [carregarRelatorio]);
+
+  const handleExportarPDF = useCallback(() => {
+    console.log('Exportando PDF...');
+  }, []);
+
+  const formatCurrency = useCallback((value: number) => {
+    return new Intl.NumberFormat('pt-AO', {
+      style: 'currency',
+      currency: 'AOA',
+      minimumFractionDigits: 2
+    }).format(value);
+  }, []);
+
+  const stats = useMemo(() => {
+    if (!relatorioGeral) return { total: 0, funcionarios: 0, ticketMedio: 0 };
+    
+    return {
+      total: relatorioGeral.totalGeral,
+      funcionarios: relatorioGeral.funcionarios.length,
+      ticketMedio: relatorioGeral.ticketMedioGeral
+    };
+  }, [relatorioGeral]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4 loading-spinner"></div>
+          <p className="text-gray-600">Carregando relatório...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 ultra-fast-fade">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Relatórios de Vendas</h1>
+          <p className="text-gray-600 mt-1">Acompanhe o desempenho de vendas por funcionário</p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            onClick={handleExportarPDF}
+            disabled={!relatorioGeral || loading}
+            variant="outline"
+            size="sm"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Exportar PDF
+          </Button>
+          <Button
+            onClick={carregarRelatorio}
+            disabled={loading}
+            variant="outline"
+            size="sm"
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Atualizar
+          </Button>
+        </div>
+      </div>
+
+      {/* Filtros */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Filtros</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">Período</label>
+              <Select value={periodo} onValueChange={setPeriodo}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="diario">Hoje</SelectItem>
+                  <SelectItem value="semanal">Esta Semana</SelectItem>
+                  <SelectItem value="mensal">Este Mês</SelectItem>
+                  <SelectItem value="anual">Este Ano</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Estatísticas */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <DollarSign className="w-6 h-6 text-green-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Total de Vendas</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {formatCurrency(stats.total)}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Users className="w-6 h-6 text-blue-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Funcionários Ativos</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.funcionarios}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <TrendingUp className="w-6 h-6 text-purple-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Ticket Médio</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {formatCurrency(stats.ticketMedio)}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Ranking de Funcionários */}
+      {relatorioGeral && relatorioGeral.funcionarios.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Ranking de Funcionários</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4 ultra-fast-fade">
+              {relatorioGeral.funcionarios.map((funcionario, index) => (
+                <div key={funcionario.codigo} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center">
+                    <div className="flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-full font-bold mr-4">
+                      {index + 1}
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">{funcionario.nome}</h3>
+                      <p className="text-sm text-gray-600">
+                        {funcionario.quantidadeVendas} vendas • Ticket médio: {formatCurrency(funcionario.ticketMedio)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-gray-900">
+                      {formatCurrency(funcionario.totalVendas)}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {((funcionario.totalVendas / relatorioGeral.totalGeral) * 100).toFixed(1)}% do total
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Mensagem quando não há dados */}
+      {relatorioGeral && relatorioGeral.funcionarios.length === 0 && (
+        <Card>
+          <CardContent className="p-12 text-center">
+            <div className="text-gray-400 mb-4">
+              <DollarSign className="w-16 h-16 mx-auto" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Nenhuma venda encontrada</h3>
+            <p className="text-gray-600">
+              Não há vendas registradas para o período selecionado.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+};
+
+export default RelatoriosVendasPage;

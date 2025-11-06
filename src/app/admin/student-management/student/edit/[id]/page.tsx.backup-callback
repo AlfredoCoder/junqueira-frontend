@@ -1,0 +1,697 @@
+"use client";
+
+import React, { useCallback, { useState, useEffect } } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import useStudent from '@/hooks/useStudent';
+import { useCourses } from '@/hooks/useCourse';
+import { useProvincias } from '@/hooks/useGeographic';
+import { useDocumentTypes } from '@/hooks/useDocument';
+import { useProfessions } from '@/hooks/useProfession';
+import { Student } from '@/types/student.types';
+import { toast } from 'react-toastify';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
+import {
+  Edit,
+  ArrowLeft,
+  Save,
+  User,
+  Phone,
+  Mail,
+  MapPin,
+  Calendar,
+  FileText,
+  GraduationCap,
+  Users,
+  DollarSign,
+  AlertCircle,
+} from 'lucide-react';
+
+// Dados da API serão carregados via hooks
+
+// Dados iniciais vazios
+const initialFormData = {
+  codigo: 0,
+  nome: "",
+  pai: "",
+  mae: "",
+  email: "",
+  telefone: "",
+  dataNascimento: "",
+  sexo: "",
+  morada: "",
+  tipo_documento: "",
+  n_documento_identificacao: "",
+  provinciaEmissao: "",
+  nome_encarregado: "",
+  telefone_encarregado: "",
+  email_encarregado: "",
+  profissao_encarregado: "",
+  local_trabalho_encarregado: "",
+  curso: "",
+  tipo_desconto: "",
+  motivo_desconto: "",
+};
+
+export default function EditStudentPage() {
+  const params = useParams();
+  const router = useRouter();
+  const { student, loading, error, getStudentById, updateStudent } = useStudent();
+  
+  // Hooks da API para dados dos selects
+  const { courses, loading: coursesLoading } = useCourses(1, 100, "");
+  const { provincias, loading: provinciasLoading } = useProvincias();
+  const { documentTypes: tiposDocumento, loading: tiposDocLoading } = useDocumentTypes();
+  const { professions: profissoes, loading: profissoesLoading } = useProfessions();
+  
+  const [activeTab, setActiveTab] = useState("personal");
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState(initialFormData);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  // Loading combinado de todos os dados
+  const isDataLoading = loading || coursesLoading || provinciasLoading || tiposDocLoading || profissoesLoading;
+
+  const studentId = Array.isArray(params.id) ? params.id[0] : params.id as string;
+
+  // Carregar dados do aluno
+  useEffect(() => {
+    if (studentId) {
+      getStudentById(parseInt(studentId));
+    }
+  }, [studentId, getStudentById]);
+
+  // Preencher formulário quando dados do aluno chegarem
+  useEffect(() => {
+    if (student) {
+      // Função para converter data
+      const formatDate = (date: string | Record<string, unknown> | undefined): string => {
+        if (!date) return "";
+        if (typeof date === 'string') {
+          try {
+            return new Date(date).toISOString().split('T')[0];
+          } catch {
+            return "";
+          }
+        }
+        return "";
+      };
+
+      setFormData({
+        codigo: student.codigo || 0,
+        nome: student.nome || "",
+        pai: student.pai || "",
+        mae: student.mae || "",
+        email: student.email || "",
+        telefone: student.telefone || "",
+        dataNascimento: formatDate(student.dataNascimento),
+        sexo: student.sexo || "",
+        morada: student.morada || "",
+        tipo_documento: student.codigoTipoDocumento?.toString() || "",
+        n_documento_identificacao: student.n_documento_identificacao || "",
+        provinciaEmissao: "", // Campo não existe no tipo Student
+        nome_encarregado: student.tb_encarregados?.nome || "",
+        telefone_encarregado: student.tb_encarregados?.telefone || "",
+        email_encarregado: (student.tb_encarregados as any)?.email || "",
+        profissao_encarregado: (student.tb_encarregados as any)?.codigo_Profissao?.toString() || "",
+        local_trabalho_encarregado: (student.tb_encarregados as any)?.local_Trabalho || "",
+        curso: student.tb_matriculas?.tb_cursos?.codigo?.toString() || "",
+        tipo_desconto: student.desconto?.toString() || "",
+        motivo_desconto: student.motivo_Desconto || "",
+      });
+    }
+  }, [student]);
+
+  const handleInputChange = useCallback((field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    
+    if (errors[field]) {
+      setErrors(prev => ({
+        ...prev,
+        [field]: ""
+      }));
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.nome.trim()) newErrors.nome = "Nome é obrigatório";
+    if (!formData.email.trim()) newErrors.email = "Email é obrigatório";
+    if (!formData.telefone.trim()) newErrors.telefone = "Telefone é obrigatório";
+    if (!formData.dataNascimento) newErrors.dataNascimento = "Data de nascimento é obrigatória";
+    if (!formData.sexo) newErrors.sexo = "Sexo é obrigatório";
+    if (!formData.tipo_documento) newErrors.tipo_documento = "Tipo de documento é obrigatório";
+    if (!formData.n_documento_identificacao.trim()) newErrors.n_documento_identificacao = "Número do documento é obrigatório";
+    if (!formData.nome_encarregado.trim()) newErrors.nome_encarregado = "Nome do encarregado é obrigatório";
+    if (!formData.telefone_encarregado.trim()) newErrors.telefone_encarregado = "Telefone do encarregado é obrigatório";
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (formData.email && !emailRegex.test(formData.email)) {
+      newErrors.email = "Email inválido";
+    }
+    if (formData.email_encarregado && !emailRegex.test(formData.email_encarregado)) {
+      newErrors.email_encarregado = "Email do encarregado inválido";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async () => {
+    if (!validateForm()) {
+      return;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      // Converter os dados do formulário para o formato esperado pela API
+      // Enviar apenas os campos que foram alterados e são permitidos na atualização
+      const studentData: any = {};
+      
+      // Campos que podem ser atualizados
+      if (formData.nome && formData.nome.trim()) {
+        studentData.nome = formData.nome.trim();
+      }
+      if (formData.pai && formData.pai.trim()) {
+        studentData.pai = formData.pai.trim();
+      }
+      if (formData.mae && formData.mae.trim()) {
+        studentData.mae = formData.mae.trim();
+      }
+      if (formData.email && formData.email.trim()) {
+        studentData.email = formData.email.trim();
+      }
+      if (formData.telefone && formData.telefone.trim()) {
+        studentData.telefone = formData.telefone.trim();
+      }
+      if (formData.dataNascimento) {
+        studentData.dataNascimento = new Date(formData.dataNascimento).toISOString();
+      }
+      if (formData.sexo) {
+        studentData.sexo = formData.sexo;
+      }
+      if (formData.morada && formData.morada.trim()) {
+        studentData.morada = formData.morada.trim();
+      }
+      if (formData.tipo_documento) {
+        studentData.codigoTipoDocumento = parseInt(formData.tipo_documento);
+      }
+      if (formData.n_documento_identificacao && formData.n_documento_identificacao.trim()) {
+        studentData.n_documento_identificacao = formData.n_documento_identificacao.trim();
+      }
+      if (formData.tipo_desconto) {
+        studentData.desconto = parseFloat(formData.tipo_desconto);
+      }
+      if (formData.motivo_desconto && formData.motivo_desconto.trim()) {
+        studentData.motivo_Desconto = formData.motivo_desconto.trim();
+      }
+      if (formData.provinciaEmissao && formData.provinciaEmissao.trim()) {
+        studentData.provinciaEmissao = formData.provinciaEmissao.trim();
+      }
+      
+      // Dados do encarregado (se foram alterados)
+      const encarregadoData: any = {};
+      if (formData.nome_encarregado && formData.nome_encarregado.trim()) {
+        encarregadoData.nome = formData.nome_encarregado.trim();
+      }
+      if (formData.telefone_encarregado && formData.telefone_encarregado.trim()) {
+        encarregadoData.telefone = formData.telefone_encarregado.trim();
+      }
+      if (formData.email_encarregado && formData.email_encarregado.trim()) {
+        encarregadoData.email = formData.email_encarregado.trim();
+      }
+      if (formData.profissao_encarregado) {
+        encarregadoData.codigo_Profissao = parseInt(formData.profissao_encarregado);
+      }
+      if (formData.local_trabalho_encarregado && formData.local_trabalho_encarregado.trim()) {
+        encarregadoData.local_Trabalho = formData.local_trabalho_encarregado.trim();
+      }
+      
+      // Se há dados do encarregado para atualizar, incluir no payload
+      if (Object.keys(encarregadoData).length > 0) {
+        studentData.encarregado = encarregadoData;
+      }
+
+      // Debug: console.log('Dados sendo enviados para a API:', studentData);
+
+      if (studentId && Object.keys(studentData).length > 0) {
+        await updateStudent(parseInt(studentId), studentData);
+      } else {
+        toast.info('Nenhuma alteração foi feita.');
+        return;
+      }
+      toast.success('Aluno atualizado com sucesso!');
+      router.push('/admin/student-management/student');
+    } catch (error) {
+      console.error("Erro ao atualizar aluno:", error);
+      toast.error('Erro ao atualizar aluno');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Loading state
+  if (isDataLoading) {
+    return (
+      <div className="space-y-6 ultra-fast-fade">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="flex items-center space-x-2">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#182F59] loading-spinner"></div>
+            <span className="text-lg">Carregando dados...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="space-y-6 ultra-fast-fade">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center space-y-4 ultra-fast-fade">
+            <AlertCircle className="h-12 w-12 text-red-500 mx-auto" />
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Erro ao carregar aluno</h2>
+              <p className="text-gray-600">{error}</p>
+            </div>
+            <Button onClick={() => router.back()} variant="outline">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Voltar
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Not found state
+  if (!student && !loading) {
+    return (
+      <div className="space-y-6 ultra-fast-fade">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center space-y-4 ultra-fast-fade">
+            <User className="h-12 w-12 text-gray-400 mx-auto" />
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Aluno não encontrado</h2>
+              <p className="text-gray-600">O aluno solicitado não foi encontrado.</p>
+            </div>
+            <Button onClick={() => router.back()} variant="outline">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Voltar
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 ultra-fast-fade">
+      {/* Header */}
+      <div className="relative overflow-hidden rounded-2xl bg-white border border-gray-200 p-8 mb-8 shadow-sm">
+        <div className="relative z-10">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-6 lg:space-y-0 ultra-fast-fade">
+            <div className="space-y-3 ultra-fast-fade">
+              <div className="flex items-center space-x-4">
+                <Button
+                  variant="outline"
+                  onClick={() => router.back()}
+                  className="border-gray-300 bg-white text-gray-600 hover:bg-gray-50"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Voltar
+                </Button>
+                <div className="h-16 w-16 bg-[#F9CD1D] rounded-2xl flex items-center justify-center shadow-md">
+                  <Edit className="h-8 w-8 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-4xl font-bold text-gray-900">
+                    Editar Aluno
+                  </h1>
+                  <p className="text-[#F9CD1D] font-semibold text-lg">{formData.nome}</p>
+                </div>
+              </div>
+              <p className="text-gray-600 text-sm max-w-2xl">
+                Atualize as informações do aluno. Todos os campos marcados com * são obrigatórios.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                variant="outline"
+                onClick={() => router.back()}
+                className="border-gray-300 bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
+              >
+                Cancelar
+              </Button>
+
+              <Button
+                onClick={handleSubmit}
+                disabled={isLoading}
+                className="bg-[#F9CD1D] hover:bg-[#F9CD1D] text-white border-0 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
+              >
+                <Save className="w-5 h-5 mr-2" />
+                {isLoading ? "Salvando..." : "Salvar Alterações"}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="absolute -top-16 -right-16 w-32 h-32 bg-[#D2B48C]/5 rounded-full"></div>
+        <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-gray-100 rounded-full"></div>
+      </div>
+
+      {/* Formulário em Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="personal">Dados Pessoais</TabsTrigger>
+          <TabsTrigger value="documents">Documentos</TabsTrigger>
+          <TabsTrigger value="guardian">Encarregado</TabsTrigger>
+          <TabsTrigger value="enrollment">Matrícula</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="personal" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <User className="h-5 w-5" />
+                <span>Informações Pessoais</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2 ultra-fast-fade">
+                  <label className="text-sm font-medium text-gray-700">Nome Completo *</label>
+                  <Input
+                    placeholder="Digite o nome completo"
+                    value={formData.nome}
+                    onChange={(e) => handleInputChange('nome', e.target.value)}
+                    className={errors.nome ? "border-red-500" : ""}
+                  />
+                  {errors.nome && (
+                    <p className="text-sm text-red-500 flex items-center">
+                      <AlertCircle className="h-4 w-4 mr-1" />
+                      {errors.nome}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2 ultra-fast-fade">
+                  <label className="text-sm font-medium text-gray-700">Sexo *</label>
+                  <Select value={formData.sexo} onValueChange={(value) => handleInputChange('sexo', value)}>
+                    <SelectTrigger className={errors.sexo ? "border-red-500" : ""}>
+                      <SelectValue placeholder="Selecione o sexo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="M">Masculino</SelectItem>
+                      <SelectItem value="F">Feminino</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2 ultra-fast-fade">
+                  <label className="text-sm font-medium text-gray-700">Data de Nascimento *</label>
+                  <Input
+                    type="date"
+                    value={formData.dataNascimento}
+                    onChange={(e) => handleInputChange('dataNascimento', e.target.value)}
+                    className={errors.dataNascimento ? "border-red-500" : ""}
+                  />
+                </div>
+
+                <div className="space-y-2 ultra-fast-fade">
+                  <label className="text-sm font-medium text-gray-700">Email *</label>
+                  <Input
+                    type="email"
+                    placeholder="exemplo@email.com"
+                    value={formData.email}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    className={errors.email ? "border-red-500" : ""}
+                  />
+                </div>
+
+                <div className="space-y-2 ultra-fast-fade">
+                  <label className="text-sm font-medium text-gray-700">Telefone *</label>
+                  <Input
+                    placeholder="9XX XXX XXX"
+                    value={formData.telefone}
+                    onChange={(e) => handleInputChange('telefone', e.target.value)}
+                    className={errors.telefone ? "border-red-500" : ""}
+                  />
+                </div>
+
+                <div className="space-y-2 ultra-fast-fade">
+                  <label className="text-sm font-medium text-gray-700">Nome do Pai</label>
+                  <Input
+                    placeholder="Nome do pai"
+                    value={formData.pai}
+                    onChange={(e) => handleInputChange('pai', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2 ultra-fast-fade">
+                  <label className="text-sm font-medium text-gray-700">Nome da Mãe</label>
+                  <Input
+                    placeholder="Nome da mãe"
+                    value={formData.mae}
+                    onChange={(e) => handleInputChange('mae', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2 md:col-span-2 ultra-fast-fade">
+                  <label className="text-sm font-medium text-gray-700">Endereço</label>
+                  <Input
+                    placeholder="Endereço completo"
+                    value={formData.morada}
+                    onChange={(e) => handleInputChange('morada', e.target.value)}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="documents" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <FileText className="h-5 w-5" />
+                <span>Documentos de Identificação</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2 ultra-fast-fade">
+                  <label className="text-sm font-medium text-gray-700">Tipo de Documento *</label>
+                  <Select value={formData.tipo_documento} onValueChange={(value) => handleInputChange('tipo_documento', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o tipo de documento" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {tiposDocumento && tiposDocumento.length > 0 ? (
+                        tiposDocumento.map((doc) => (
+                          <SelectItem key={doc.codigo} value={doc.codigo.toString()}>
+                            {doc.designacao}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="" disabled>Nenhum tipo de documento disponível</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2 ultra-fast-fade">
+                  <label className="text-sm font-medium text-gray-700">Número do Documento *</label>
+                  <Input
+                    placeholder="Número do documento"
+                    value={formData.n_documento_identificacao}
+                    onChange={(e) => handleInputChange('n_documento_identificacao', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2 ultra-fast-fade">
+                  <label className="text-sm font-medium text-gray-700">Província de Emissão</label>
+                  <Select value={formData.provinciaEmissao} onValueChange={(value) => handleInputChange('provinciaEmissao', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a província" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {provincias && provincias.length > 0 ? (
+                        provincias.map((provincia) => (
+                          <SelectItem key={provincia.codigo} value={provincia.designacao || ""}>
+                            {provincia.designacao}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="" disabled>Nenhuma província disponível</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="guardian" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Users className="h-5 w-5" />
+                <span>Encarregado de Educação</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2 ultra-fast-fade">
+                  <label className="text-sm font-medium text-gray-700">Nome do Encarregado *</label>
+                  <Input
+                    placeholder="Nome completo do encarregado"
+                    value={formData.nome_encarregado}
+                    onChange={(e) => handleInputChange('nome_encarregado', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2 ultra-fast-fade">
+                  <label className="text-sm font-medium text-gray-700">Telefone do Encarregado *</label>
+                  <Input
+                    placeholder="9XX XXX XXX"
+                    value={formData.telefone_encarregado}
+                    onChange={(e) => handleInputChange('telefone_encarregado', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2 ultra-fast-fade">
+                  <label className="text-sm font-medium text-gray-700">Email do Encarregado</label>
+                  <Input
+                    type="email"
+                    placeholder="exemplo@email.com"
+                    value={formData.email_encarregado}
+                    onChange={(e) => handleInputChange('email_encarregado', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2 ultra-fast-fade">
+                  <label className="text-sm font-medium text-gray-700">Profissão</label>
+                  <Select value={formData.profissao_encarregado} onValueChange={(value) => handleInputChange('profissao_encarregado', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a profissão" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {profissoes && profissoes.length > 0 ? (
+                        profissoes.map((prof) => (
+                          <SelectItem key={prof.codigo} value={prof.codigo.toString()}>
+                            {prof.designacao}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="" disabled>Nenhuma profissão disponível</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2 md:col-span-2 ultra-fast-fade">
+                  <label className="text-sm font-medium text-gray-700">Local de Trabalho</label>
+                  <Input
+                    placeholder="Nome da empresa ou local de trabalho"
+                    value={formData.local_trabalho_encarregado}
+                    onChange={(e) => handleInputChange('local_trabalho_encarregado', e.target.value)}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="enrollment" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <GraduationCap className="h-5 w-5" />
+                <span>Informações de Matrícula</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2 ultra-fast-fade">
+                  <label className="text-sm font-medium text-gray-700">Curso</label>
+                  <Select value={formData.curso} onValueChange={(value) => handleInputChange('curso', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o curso" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {courses && courses.length > 0 ? (
+                        courses.map((course) => (
+                          <SelectItem key={course.codigo} value={course.codigo.toString()}>
+                            {course.designacao}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="" disabled>Nenhum curso disponível</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2 ultra-fast-fade">
+                  <label className="text-sm font-medium text-gray-700">Tipo de Desconto</label>
+                  <Select value={formData.tipo_desconto} onValueChange={(value) => handleInputChange('tipo_desconto', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o desconto" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">Sem desconto</SelectItem>
+                      <SelectItem value="10">10%</SelectItem>
+                      <SelectItem value="25">25%</SelectItem>
+                      <SelectItem value="50">50%</SelectItem>
+                      <SelectItem value="100">100% (Bolsa integral)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {formData.tipo_desconto && formData.tipo_desconto !== "0" && (
+                  <div className="space-y-2 md:col-span-2 ultra-fast-fade">
+                    <label className="text-sm font-medium text-gray-700">Motivo do Desconto</label>
+                    <Input
+                      placeholder="Descreva o motivo do desconto"
+                      value={formData.motivo_desconto}
+                      onChange={(e) => handleInputChange('motivo_desconto', e.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}

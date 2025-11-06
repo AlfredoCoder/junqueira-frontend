@@ -1,0 +1,714 @@
+"use client";
+
+import React, { useState, useEffect } from 'react';
+import Container from '@/components/layout/Container';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { useConfirmations, useConfirmationsStatistics, useConfirmation, useDeleteConfirmation } from '@/hooks/useConfirmation';
+import { useFilterOptions } from '@/hooks/useFilterOptions';
+import { ConfirmDeleteConfirmationModal } from '@/components/confirmation/confirm-delete-confirmation-modal';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+
+import {
+  Plus,
+  MoreHorizontal,
+  Edit,
+  Users,
+  Calendar,
+  CheckCircle,
+  Clock,
+  GraduationCap,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  Loader2,
+  Trash2,
+} from 'lucide-react';
+
+import { WelcomeHeader } from '@/components/dashboard';
+import StatCard from '@/components/layout/StatCard';
+import FilterSearchCard from '@/components/layout/FilterSearchCard';
+import { toast } from 'react-toastify';
+
+export default function ConfirmationsListPage() {
+
+  const [searchInput, setSearchInput] = useState(""); // Input do usuário
+  const [searchTerm, setSearchTerm] = useState(""); // Termo usado na busca (com debounce)
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [yearFilter, setYearFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  
+  // Estados para modal de visualização rápida
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [selectedConfirmationId, setSelectedConfirmationId] = useState<number | null>(null);
+  
+  // Hook para confirmação individual (modal)
+  const { 
+    confirmation: selectedConfirmation, 
+    loading: confirmationLoading, 
+    fetchConfirmationManual,
+    clearConfirmation 
+  } = useConfirmation();
+
+  // Hook para exclusão de confirmação
+  const { deleteConfirmation, loading: deleteLoading, error: deleteError } = useDeleteConfirmation();
+
+  // Estados do modal de exclusão
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [confirmationToDelete, setConfirmationToDelete] = useState<{
+    codigo: number;
+    alunoNome: string;
+    turmaNome: string;
+    dataConfirmacao: string;
+    isLastConfirmation: boolean;
+  } | null>(null);
+  const [deleteResult, setDeleteResult] = useState<{
+    tipo?: 'cascade_delete' | 'soft_delete' | 'hard_delete';
+    detalhes?: Record<string, number | boolean>;
+    info?: string;
+  } | null>(null);
+
+  // Usar o hook useFilterOptions para obter as opções de filtros
+  const {
+    statusOptions,
+    academicYearOptions
+  } = useFilterOptions(1, 100, "");
+
+  // Debounce para pesquisa - aguarda 500ms após o usuário parar de digitar
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchTerm(searchInput);
+      setCurrentPage(1); // Resetar para primeira página ao pesquisar
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  // Hook para buscar confirmações da API com filtros
+  const {
+    confirmations,
+    pagination,
+    loading: isLoading,
+    error,
+    refetch: fetchConfirmations
+  } = useConfirmations(
+    currentPage, 
+    itemsPerPage, 
+    searchTerm,
+    statusFilter !== "all" ? statusFilter : null,
+    yearFilter !== "all" ? yearFilter : null
+  );
+
+  // Hook para buscar estatísticas com os mesmos filtros
+  const {
+    statistics,
+    loading: statsLoading,
+  } = useConfirmationsStatistics(
+    statusFilter !== "all" ? statusFilter : null,
+    yearFilter !== "all" ? yearFilter : null
+  );
+
+  // Recarregar quando mudar a busca (com debounce otimizado)
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setCurrentPage(1); // Reset para primeira página ao buscar
+      console.log('🔍 Busca alterada:', searchTerm);
+    }, 300); // Reduzido para 300ms para resposta mais rápida
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
+
+  // Usar dados diretamente da API (filtros são aplicados no backend)
+  const totalPages = pagination?.totalPages || 1;
+  const totalItems = pagination?.totalItems || 0;
+  const currentConfirmations = confirmations || [];
+
+  const startIndex = ((currentPage - 1) * itemsPerPage) + 1;
+  const endIndex = Math.min(currentPage * itemsPerPage, totalItems);
+
+
+  const handleEditConfirmation = (confirmationId: number) => {
+    window.location.href = `/admin/student-management/confirmations/edit/${confirmationId}`;
+  };
+
+  // Função otimizada para visualizar confirmação
+  const handleViewConfirmation = async (confirmationId: number) => {
+    try {
+      console.log('👁️ Abrindo modal para confirmação:', confirmationId);
+      setSelectedConfirmationId(confirmationId);
+      setIsViewModalOpen(true);
+      
+      // Carregar dados da confirmação de forma assíncrona
+      await fetchConfirmationManual(confirmationId);
+    } catch (error) {
+      console.error('❌ Erro ao carregar confirmação para modal:', error);
+      setIsViewModalOpen(false);
+    }
+  };
+
+  // Função para fechar modal
+  const handleCloseModal = () => {
+    setIsViewModalOpen(false);
+    setSelectedConfirmationId(null);
+    clearConfirmation();
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('pt-AO');
+  };
+
+  const calculateAge = (birthDate: string) => {
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  // Handler para abrir modal de exclusão
+  const handleDeleteClick = async (confirmationItem: typeof confirmations[0]) => {
+    // Verificar se é a última confirmação (não temos essa informação no tipo atual, então assumimos false)
+    const isLast = false;
+    
+    setConfirmationToDelete({
+      codigo: confirmationItem.codigo,
+      alunoNome: confirmationItem.tb_matriculas?.tb_alunos?.nome || 'N/A',
+      turmaNome: confirmationItem.tb_turmas?.designacao || 'N/A',
+      dataConfirmacao: confirmationItem.data_Confirmacao || new Date().toISOString(),
+      isLastConfirmation: isLast
+    });
+    setDeleteResult(null);
+    setDeleteModalOpen(true);
+  };
+
+  // Handler para confirmar exclusão
+  const handleConfirmDelete = async () => {
+    if (!confirmationToDelete) return;
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const response = await deleteConfirmation(confirmationToDelete.codigo) as any;
+      
+      toast.success('Confirmação excluída com sucesso!');
+      
+      // Definir resultado para exibir detalhes
+      setDeleteResult({
+        tipo: 'hard_delete',
+        detalhes: response?.detalhes || {},
+        info: response?.info || 'Confirmação excluída com sucesso'
+      });
+
+      // Recarregar a lista após 2 segundos
+      setTimeout(() => {
+        fetchConfirmations();
+        setDeleteModalOpen(false);
+        setConfirmationToDelete(null);
+        setDeleteResult(null);
+      }, 2000);
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao excluir confirmação';
+      console.error('Erro ao excluir confirmação:', error);
+      toast.error(errorMessage);
+    }
+  };
+
+  // Handler para fechar modal de exclusão
+  const handleCloseDeleteModal = () => {
+    if (!deleteLoading) {
+      setDeleteModalOpen(false);
+      setConfirmationToDelete(null);
+      setDeleteResult(null);
+    }
+  };
+
+  return (
+    <Container>
+
+      <WelcomeHeader
+        title="Gestão de Confirmações"
+        description="Gerencie todas as confirmações de turma dos alunos. Visualize informações detalhadas, acompanhe classificações e mantenha os registros sempre atualizados."
+        titleBtnRight='Nova Confirmação'
+        iconBtnRight={<Plus className="w-5 h-5 mr-2" />}
+        onClickBtnRight={() => window.location.href = '/admin/student-management/confirmations/add'}
+      />
+
+      {/* Stats Cards seguindo padrão do Dashboard */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
+
+        <StatCard
+          title="Total de Confirmações"
+          value={statsLoading ? "..." : (statistics?.totalConfirmacoes || 0).toString()}
+          change="Total"
+          changeType="up"
+          icon={Users}
+          color="text-[#182F59]"
+          bgColor="bg-gradient-to-br from-blue-50 via-white to-blue-50/50"
+          accentColor="bg-gradient-to-br from-[#182F59] to-[#1a3260]"
+        />
+
+        <StatCard
+          title="Confirmações Ativas"
+          value={statsLoading ? "..." : (statistics?.confirmacoesAtivas || 0).toString()}
+          change={"Ativas"}
+          changeType="up"
+          icon={CheckCircle}
+          color="text-emerald-600"
+          bgColor="bg-gradient-to-br from-emerald-50 via-white to-emerald-50/50"
+          accentColor="bg-gradient-to-br from-emerald-500 to-green-600"
+        />
+
+        {/* <StatCard
+          title="Confirmações Aprovados"
+          value={statsLoading ? "..." : (statistics?.aprovados || 0).toString()}
+          change={"Aprovados"}
+          changeType="up"
+          icon={GraduationCap}
+          color="text-[#FFD002]"
+          bgColor="bg-gradient-to-br from-amber-50 via-white to-yellow-50/50"
+          accentColor="bg-gradient-to-br from-[#FFD002] to-[#F5DEB3]"
+        /> */}
+
+        <StatCard
+          title="Confirmações Reprovados"
+          value={statsLoading ? "..." : (statistics?.reprovados || 0).toString()}
+          change={"Reprovados"}
+          changeType="down"
+          icon={Clock}
+          color="text-red-600"
+          bgColor="bg-gradient-to-br from-red-50 via-white to-red-50/50"
+          accentColor="bg-gradient-to-br from-red-500 to-red-600"
+        />
+
+      </div>
+
+
+      <FilterSearchCard
+        title="Filtros e Busca"
+        searchPlaceholder="Buscar por nome do aluno ou turma..."
+        searchValue={searchInput}
+        onSearchChange={setSearchInput}
+        isSearching={isLoading}
+        filters={[
+          {
+            label: "Status",
+            value: statusFilter,
+            onChange: (value) => {
+              setStatusFilter(value);
+              setCurrentPage(1);
+            },
+            options: statusOptions,
+            width: "w-48"
+          },
+          {
+            label: "Ano Letivo",
+            value: yearFilter,
+            onChange: (value) => {
+              setYearFilter(value);
+              setCurrentPage(1);
+            },
+            options: academicYearOptions,
+            width: "w-48"
+          }
+        ]}
+      />
+
+      {/* Tabela de Confirmações */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Users className="h-5 w-5" />
+              <span>Lista de Confirmações</span>
+              {isLoading && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#F9CD1D]"></div>}
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+              <p className="text-red-600 text-sm">
+                <strong>Erro ao carregar confirmações:</strong> {error}
+              </p>
+              <Button
+                onClick={() => fetchConfirmations()}
+                variant="outline"
+                size="sm"
+                className="mt-2"
+              >
+                Tentar novamente
+              </Button>
+            </div>
+          )}
+
+          {isLoading && !confirmations?.length ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#F9CD1D]"></div>
+              <span className="ml-2 text-gray-600">Carregando confirmações...</span>
+            </div>
+          ) : currentConfirmations.length === 0 ? (
+            <div className="text-center py-8">
+              <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500">Nenhuma confirmação encontrada</p>
+              <p className="text-sm text-gray-400 mt-1">
+                Tente ajustar os filtros ou criar uma nova confirmação
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Aluno</TableHead>
+                    <TableHead>Turma</TableHead>
+                    <TableHead>Curso</TableHead>
+                    <TableHead>Data Confirmação</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {currentConfirmations.map((confirmation) => (
+                    <TableRow key={confirmation.codigo}>
+                      <TableCell>
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                            <Users className="h-5 w-5 text-gray-500" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">{confirmation.tb_matriculas?.tb_alunos?.nome || 'N/A'}</p>
+                            <p className="text-sm text-gray-500">
+                              {confirmation.tb_matriculas?.tb_alunos?.dataNascimento ? calculateAge(confirmation.tb_matriculas.tb_alunos.dataNascimento) : 'N/A'} anos • {confirmation.tb_matriculas?.tb_alunos?.sexo === 'M' ? 'Masculino' : 'Feminino'}
+                            </p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium text-gray-900">{confirmation.tb_turmas?.designacao || 'N/A'}</p>
+                          <p className="text-sm text-gray-500">
+                            {confirmation.tb_turmas?.tb_classes?.designacao || 'N/A'} • {confirmation.tb_turmas?.tb_periodos?.designacao || 'N/A'}
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <p className="font-medium text-gray-900">{confirmation.tb_matriculas?.tb_cursos?.designacao || 'N/A'}</p>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <Calendar className="h-4 w-4 text-gray-400" />
+                          <span className="text-sm">{confirmation.data_Confirmacao ? formatDate(confirmation.data_Confirmacao) : 'N/A'}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={confirmation.codigo_Status === 1 ? "default" : "secondary"}
+                          className={confirmation.codigo_Status === 1 ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-800"}
+                        >
+                          {confirmation.codigo_Status === 1 ? "Ativa" : "Inativa"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleViewConfirmation(confirmation.codigo)}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              Visualizar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleEditConfirmation(confirmation.codigo)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => handleDeleteClick(confirmation)}
+                              className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+
+          {/* Paginação */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between space-x-2 py-4">
+              <div className="text-sm text-gray-500">
+                Mostrando {startIndex} a {endIndex} de {totalItems} confirmações
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Anterior
+                </Button>
+                <div className="flex items-center space-x-1">
+                  {(() => {
+                    const maxPagesToShow = 5;
+                    const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+                    const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+                    const adjustedStartPage = Math.max(1, endPage - maxPagesToShow + 1);
+
+                    const pages = [];
+
+                    // Primeira página
+                    if (adjustedStartPage > 1) {
+                      pages.push(
+                        <Button
+                          key={1}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(1)}
+                        >
+                          1
+                        </Button>
+                      );
+                      if (adjustedStartPage > 2) {
+                        pages.push(<span key="ellipsis1" className="px-2">...</span>);
+                      }
+                    }
+
+                    // Páginas do meio
+                    for (let i = adjustedStartPage; i <= endPage; i++) {
+                      pages.push(
+                        <Button
+                          key={i}
+                          variant={currentPage === i ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setCurrentPage(i)}
+                          className={currentPage === i ? "bg-[#182F59] hover:bg-[#1a3260]" : ""}
+                        >
+                          {i}
+                        </Button>
+                      );
+                    }
+
+                    // Última página
+                    if (endPage < totalPages) {
+                      if (endPage < totalPages - 1) {
+                        pages.push(<span key="ellipsis2" className="px-2">...</span>);
+                      }
+                      pages.push(
+                        <Button
+                          key={totalPages}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(totalPages)}
+                        >
+                          {totalPages}
+                        </Button>
+                      );
+                    }
+
+                    return pages;
+                  })()}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                >
+                  Próximo
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Modal de Visualização Rápida */}
+      <Dialog open={isViewModalOpen} onOpenChange={handleCloseModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <Eye className="h-5 w-5" />
+              <span>Detalhes da Confirmação</span>
+              {confirmationLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {confirmationLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              <span className="ml-2 text-gray-600">Carregando detalhes...</span>
+            </div>
+          ) : selectedConfirmation ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Informações do Aluno */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center space-x-2">
+                    <Users className="h-5 w-5" />
+                    <span>Dados do Aluno</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Nome</label>
+                    <p className="text-base font-medium">{selectedConfirmation.tb_matriculas?.tb_alunos?.nome || 'N/A'}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Idade</label>
+                      <p className="text-base">
+                        {selectedConfirmation.tb_matriculas?.tb_alunos?.dataNascimento 
+                          ? calculateAge(selectedConfirmation.tb_matriculas.tb_alunos.dataNascimento) 
+                          : 'N/A'} anos
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Sexo</label>
+                      <p className="text-base">
+                        {selectedConfirmation.tb_matriculas?.tb_alunos?.sexo === 'M' ? 'Masculino' : 'Feminino'}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Informações Acadêmicas */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center space-x-2">
+                    <GraduationCap className="h-5 w-5" />
+                    <span>Dados Acadêmicos</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Curso</label>
+                    <p className="text-base font-medium">{selectedConfirmation.tb_matriculas?.tb_cursos?.designacao || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Turma</label>
+                    <p className="text-base">{selectedConfirmation.tb_turmas?.designacao || 'N/A'}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Classe</label>
+                      <p className="text-base">{selectedConfirmation.tb_turmas?.tb_classes?.designacao || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Período</label>
+                      <p className="text-base">{selectedConfirmation.tb_turmas?.tb_periodos?.designacao || 'N/A'}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Informações da Confirmação */}
+              <Card className="md:col-span-2">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center space-x-2">
+                    <CheckCircle className="h-5 w-5" />
+                    <span>Detalhes da Confirmação</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Data de Confirmação</label>
+                      <p className="text-base flex items-center space-x-2">
+                        <Calendar className="h-4 w-4 text-gray-400" />
+                        <span>{selectedConfirmation.data_Confirmacao ? formatDate(selectedConfirmation.data_Confirmacao) : 'N/A'}</span>
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Status</label>
+                      <div className="mt-1">
+                        <Badge
+                          variant={selectedConfirmation.codigo_Status === 1 ? "default" : "secondary"}
+                          className={selectedConfirmation.codigo_Status === 1 ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-800"}
+                        >
+                          {selectedConfirmation.codigo_Status === 1 ? "Ativa" : "Inativa"}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Classificação</label>
+                      <p className="text-base">{selectedConfirmation.classificacao || 'N/A'}</p>
+                    </div>
+                  </div>
+                  
+                  {selectedConfirmation.mes_Comecar && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Mês para Começar</label>
+                      <p className="text-base">{formatDate(selectedConfirmation.mes_Comecar)}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-500">Nenhuma confirmação selecionada</p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Confirmação de Exclusão */}
+      <ConfirmDeleteConfirmationModal
+        open={deleteModalOpen}
+        onOpenChange={handleCloseDeleteModal}
+        onConfirm={handleConfirmDelete}
+        confirmation={confirmationToDelete}
+        loading={deleteLoading}
+        error={deleteError}
+        deleteResult={deleteResult}
+      />
+
+    </Container>
+  );
+}

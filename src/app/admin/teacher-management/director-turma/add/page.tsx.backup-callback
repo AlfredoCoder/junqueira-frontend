@@ -1,0 +1,462 @@
+"use client";
+
+import React, { useCallback, { useState } } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  UserCheck,
+  ArrowLeft,
+  Save,
+  X,
+  Loader2,
+  Users,
+  School,
+  Calendar,
+  GraduationCap,
+} from 'lucide-react';
+
+// Dados mockados para selects
+const mockProfessores = [
+  { id: "1", nome: "Prof. João Silva Santos", especialidade: "Matemática", email: "joao.silva@Complexo Abilio Junqueira.com" },
+  { id: "2", nome: "Prof. Maria Santos Costa", especialidade: "Física", email: "maria.santos@Complexo Abilio Junqueira.com" },
+  { id: "3", nome: "Prof. Carlos Mendes Lima", especialidade: "Química", email: "carlos.mendes@Complexo Abilio Junqueira.com" },
+  { id: "4", nome: "Prof. Ana Paula Francisco", especialidade: "Biologia", email: "ana.francisco@Complexo Abilio Junqueira.com" },
+  { id: "5", nome: "Prof. Pedro Silva Neto", especialidade: "Língua Portuguesa", email: "pedro.silva@Complexo Abilio Junqueira.com" },
+  { id: "6", nome: "Prof. Carla Lima Santos", especialidade: "História", email: "carla.lima@Complexo Abilio Junqueira.com" },
+];
+
+const mockTurmas = [
+  { id: "1", designacao: "IG-10A-2024", classe: "10ª Classe", curso: "Informática de Gestão", totalAlunos: 28 },
+  { id: "2", designacao: "CG-11B-2024", classe: "11ª Classe", curso: "Contabilidade e Gestão", totalAlunos: 25 },
+  { id: "3", designacao: "AD-12C-2024", classe: "12ª Classe", curso: "Administração", totalAlunos: 30 },
+  { id: "4", designacao: "EC-13D-2024", classe: "13ª Classe", curso: "Economia", totalAlunos: 22 },
+];
+
+const mockSalas = [
+  { id: "1", nome: "Sala A1", capacidade: 30, localizacao: "Bloco A" },
+  { id: "2", nome: "Sala A2", capacidade: 25, localizacao: "Bloco A" },
+  { id: "3", nome: "Sala B1", capacidade: 35, localizacao: "Bloco B" },
+  { id: "4", nome: "Sala B2", capacidade: 28, localizacao: "Bloco B" },
+];
+
+const mockAnosLetivos = [
+  { id: "1", ano: "2024/2025", status: "Ativo" },
+  { id: "2", ano: "2023/2024", status: "Concluído" },
+  { id: "3", ano: "2025/2026", status: "Planejado" },
+];
+
+const periodos = [
+  { value: "manha", label: "Manhã (07:30 - 12:00)" },
+  { value: "tarde", label: "Tarde (13:30 - 18:00)" },
+  { value: "noite", label: "Noite (19:00 - 22:30)" },
+];
+
+export default function AddDirectorTurmaPage() {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Estados do formulário
+  const [formData, setFormData] = useState({
+    professor: "",
+    turma: "",
+    sala: "",
+    periodo: "",
+    anoLetivo: "1", // Default para ano ativo
+    dataAtribuicao: "",
+    observacoes: "",
+    status: "Ativo",
+  });
+
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const handleCancel = useCallback(() => {
+    router.back();
+  };
+
+  const handleInputChange = useCallback((field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    
+    // Limpar erro do campo quando o usuário começar a digitar
+    if (errors[field]) {
+      setErrors(prev => ({
+        ...prev,
+        [field]: ""
+      }));
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.professor) {
+      newErrors.professor = "Professor é obrigatório";
+    }
+
+    if (!formData.turma) {
+      newErrors.turma = "Turma é obrigatória";
+    }
+
+    if (!formData.sala) {
+      newErrors.sala = "Sala é obrigatória";
+    }
+
+    if (!formData.periodo) {
+      newErrors.periodo = "Período é obrigatório";
+    }
+
+    if (!formData.dataAtribuicao) {
+      newErrors.dataAtribuicao = "Data de atribuição é obrigatória";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      // Simular API call
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      console.log('Dados do diretor de turma:', formData);
+      
+      // Redirecionar para lista de diretores de turma
+      router.push('/admin/teacher-management/director-turma');
+      
+    } catch (error) {
+      console.error('Erro ao criar diretor de turma:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getSelectedProfessor = () => {
+    return mockProfessores.find(prof => prof.id === formData.professor);
+  };
+
+  const getSelectedTurma = () => {
+    return mockTurmas.find(turma => turma.id === formData.turma);
+  };
+
+  return (
+    <div className="space-y-6 ultra-fast-fade">
+      {/* Header Fixo */}
+      <div className="sticky top-0 z-50 bg-background border-b shadow-sm mb-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCancel}
+                className="flex items-center"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Voltar
+              </Button>
+              <div className="h-6 w-px bg-border"></div>
+              <div>
+                <h1 className="text-2xl font-bold text-foreground">Novo Diretor de Turma</h1>
+                <p className="text-sm text-muted-foreground">
+                  Atribua um professor como diretor de turma
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleCancel}
+                disabled={isLoading}
+              >
+                <X className="w-4 h-4 mr-2" />
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                form="director-form"
+                disabled={isLoading}
+                className="bg-[#3B6C4D] hover:bg-[#8B4513]"
+              >
+                {isLoading ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin loading-spinner" />
+                ) : (
+                  <Save className="w-4 h-4 mr-2" />
+                )}
+                Salvar Atribuição
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Formulário */}
+      <div className="max-w-6xl mx-auto space-y-8 ultra-fast-fade">
+        <form id="director-form" onSubmit={handleSubmit} className="space-y-8">
+          
+          {/* Seleção do Professor */}
+          <Card className="border-l-4 border-l-blue-500">
+            <CardHeader>
+              <CardTitle className="flex items-center text-xl">
+                <Users className="w-6 h-6 mr-3 text-blue-500" />
+                Seleção do Professor
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2 ultra-fast-fade">
+                <Label htmlFor="professor" className="text-foreground font-semibold">
+                  Professor *
+                </Label>
+                <Select
+                  value={formData.professor}
+                  onValueChange={(value) => handleInputChange('professor', value)}
+                >
+                  <SelectTrigger className={`h-12 ${errors.professor ? 'border-red-500' : ''}`}>
+                    <SelectValue placeholder="Selecione o professor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {mockProfessores.map((professor) => (
+                      <SelectItem key={professor.id} value={professor.id}>
+                        {professor.nome} - {professor.especialidade}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.professor && (
+                  <p className="text-sm text-red-500">{errors.professor}</p>
+                )}
+                {getSelectedProfessor() && (
+                  <div className="mt-3 p-3 bg-muted/50 rounded-lg">
+                    <p className="text-sm text-muted-foreground">Email: {getSelectedProfessor()?.email}</p>
+                    <p className="text-sm text-muted-foreground">Especialidade: {getSelectedProfessor()?.especialidade}</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Informações da Turma */}
+          <Card className="border-l-4 border-l-purple-500">
+            <CardHeader>
+              <CardTitle className="flex items-center text-xl">
+                <School className="w-6 h-6 mr-3 text-purple-500" />
+                Informações da Turma
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="space-y-2 ultra-fast-fade">
+                  <Label htmlFor="turma" className="text-foreground font-semibold">
+                    Turma *
+                  </Label>
+                  <Select
+                    value={formData.turma}
+                    onValueChange={(value) => handleInputChange('turma', value)}
+                  >
+                    <SelectTrigger className={`h-12 ${errors.turma ? 'border-red-500' : ''}`}>
+                      <SelectValue placeholder="Selecione a turma" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {mockTurmas.map((turma) => (
+                        <SelectItem key={turma.id} value={turma.id}>
+                          {turma.designacao} - {turma.classe} ({turma.curso})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.turma && (
+                    <p className="text-sm text-red-500">{errors.turma}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2 ultra-fast-fade">
+                  <Label htmlFor="sala" className="text-foreground font-semibold">
+                    Sala *
+                  </Label>
+                  <Select
+                    value={formData.sala}
+                    onValueChange={(value) => handleInputChange('sala', value)}
+                  >
+                    <SelectTrigger className={`h-12 ${errors.sala ? 'border-red-500' : ''}`}>
+                      <SelectValue placeholder="Selecione a sala" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {mockSalas.map((sala) => (
+                        <SelectItem key={sala.id} value={sala.id}>
+                          {sala.nome} - Cap: {sala.capacidade} ({sala.localizacao})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.sala && (
+                    <p className="text-sm text-red-500">{errors.sala}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2 ultra-fast-fade">
+                  <Label htmlFor="periodo" className="text-foreground font-semibold">
+                    Período *
+                  </Label>
+                  <Select
+                    value={formData.periodo}
+                    onValueChange={(value) => handleInputChange('periodo', value)}
+                  >
+                    <SelectTrigger className={`h-12 ${errors.periodo ? 'border-red-500' : ''}`}>
+                      <SelectValue placeholder="Selecione o período" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {periodos.map((periodo) => (
+                        <SelectItem key={periodo.value} value={periodo.value}>
+                          {periodo.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.periodo && (
+                    <p className="text-sm text-red-500">{errors.periodo}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2 ultra-fast-fade">
+                  <Label htmlFor="anoLetivo" className="text-foreground font-semibold">
+                    Ano Letivo
+                  </Label>
+                  <Select
+                    value={formData.anoLetivo}
+                    onValueChange={(value) => handleInputChange('anoLetivo', value)}
+                  >
+                    <SelectTrigger className="h-12">
+                      <SelectValue placeholder="Selecione o ano letivo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {mockAnosLetivos.map((ano) => (
+                        <SelectItem key={ano.id} value={ano.id}>
+                          {ano.ano} - {ano.status}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {getSelectedTurma() && (
+                <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+                  <h4 className="font-semibold text-foreground mb-2">Informações da Turma Selecionada:</h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Classe: <span className="text-foreground">{getSelectedTurma()?.classe}</span></p>
+                      <p className="text-muted-foreground">Curso: <span className="text-foreground">{getSelectedTurma()?.curso}</span></p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Total de Alunos: <span className="text-foreground">{getSelectedTurma()?.totalAlunos}</span></p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Configuração da Atribuição */}
+          <Card className="border-l-4 border-l-green-500">
+            <CardHeader>
+              <CardTitle className="flex items-center text-xl">
+                <Calendar className="w-6 h-6 mr-3 text-green-500" />
+                Configuração da Atribuição
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="space-y-2 ultra-fast-fade">
+                  <Label htmlFor="dataAtribuicao" className="text-foreground font-semibold">
+                    Data de Atribuição *
+                  </Label>
+                  <Input
+                    id="dataAtribuicao"
+                    type="date"
+                    value={formData.dataAtribuicao}
+                    onChange={(e) => handleInputChange('dataAtribuicao', e.target.value)}
+                    className={`h-12 ${errors.dataAtribuicao ? 'border-red-500' : ''}`}
+                  />
+                  {errors.dataAtribuicao && (
+                    <p className="text-sm text-red-500">{errors.dataAtribuicao}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2 ultra-fast-fade">
+                  <Label htmlFor="status" className="text-foreground font-semibold">
+                    Status
+                  </Label>
+                  <Select
+                    value={formData.status}
+                    onValueChange={(value) => handleInputChange('status', value)}
+                  >
+                    <SelectTrigger className="h-12">
+                      <SelectValue placeholder="Selecione o status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Ativo">Ativo</SelectItem>
+                      <SelectItem value="Inativo">Inativo</SelectItem>
+                      <SelectItem value="Suspenso">Suspenso</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Observações */}
+          <Card className="border-l-4 border-l-orange-500">
+            <CardHeader>
+              <CardTitle className="flex items-center text-xl">
+                <GraduationCap className="w-6 h-6 mr-3 text-orange-500" />
+                Observações
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 ultra-fast-fade">
+                <Label htmlFor="observacoes" className="text-foreground font-semibold">
+                  Observações Gerais
+                </Label>
+                <Textarea
+                  id="observacoes"
+                  value={formData.observacoes}
+                  onChange={(e) => handleInputChange('observacoes', e.target.value)}
+                  placeholder="Informações adicionais sobre a atribuição, responsabilidades específicas, etc..."
+                  rows={4}
+                  className="resize-none"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+        </form>
+      </div>
+    </div>
+  );
+}

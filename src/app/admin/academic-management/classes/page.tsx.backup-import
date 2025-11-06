@@ -1,0 +1,438 @@
+"use client";
+
+import React, { useCallback, { useState } } from 'react';
+import { toast } from 'react-toastify';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+
+import {
+  DropdownMenu, DropdownMenuContent,
+  DropdownMenuItem, DropdownMenuLabel,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+
+import {
+  GraduationCap, Plus,
+  MoreHorizontal, Edit, Trash2,
+  Download,
+  BookOpen, ChevronLeft,
+  ChevronRight, CheckCircle, XCircle,
+} from 'lucide-react';
+
+import { useClassManager, useDeleteClass } from '@/hooks/useClass';
+import { ClassModal } from '@/components/classes/classes-modal';
+import { ConfirmDeleteClassModal } from '@/components/classes/confirm-delete-class-modal';
+import { WelcomeHeader } from '@/components/dashboard';
+import StatCard from '@/components/layout/StatCard';
+import FilterSearchCard from '@/components/layout/FilterSearchCard';
+import { IClass } from '@/types/class.types';
+
+export default function ClassesPage() {
+  // Estados para exclusão
+  const [classToDelete, setClassToDelete] = useState<{
+    codigo: number;
+    designacao: string;
+    status: number;
+    notaMaxima?: number;
+    exame?: boolean;
+  } | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteResult, setDeleteResult] = useState<{
+    tipo?: 'cascade_delete' | 'soft_delete' | 'hard_delete';
+    detalhes?: Record<string, number | boolean | string>;
+    info?: string;
+  } | null>(null);
+
+  const {
+    classes,
+    pagination,
+    stats,
+    isLoading,
+    error,
+    currentPage,
+    searchTerm,
+    limit,
+    selectedClass,
+    isModalOpen,
+    handleSearch,
+    handlePageChange,
+    openCreateModal,
+    openEditModal,
+    closeModal,
+    refetch,
+  } = useClassManager();
+
+  const { deleteClass, isLoading: deleteLoading, error: deleteError } = useDeleteClass();
+
+  const handleModalSuccess = useCallback(() => {
+    refetch();
+  };
+
+  // Handler para abrir modal de exclusão
+  const handleDeleteClick = useCallback((classItem: IClass) => {
+    setClassToDelete({
+      codigo: classItem.codigo,
+      designacao: classItem.designacao,
+      status: classItem.status || 0,
+      notaMaxima: classItem.notaMaxima,
+      exame: classItem.exame
+    });
+    setDeleteResult(null);
+    setDeleteModalOpen(true);
+  };
+
+  // Handler para confirmar exclusão
+  const handleConfirmDelete = async () => {
+    if (!classToDelete) return;
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const response = await deleteClass(classToDelete.codigo) as any;
+      
+      // Se chegou aqui, a exclusão foi bem-sucedida
+      toast.success('Classe excluída com sucesso!');
+      
+      // Definir resultado para exibir detalhes
+      setDeleteResult({
+        tipo: response?.tipo || 'hard_delete',
+        detalhes: response?.detalhes || {},
+        info: response?.info || 'Classe excluída com sucesso'
+      });
+
+      // Recarregar a lista após 2 segundos
+      setTimeout(() => {
+        refetch();
+        setDeleteModalOpen(false);
+        setClassToDelete(null);
+        setDeleteResult(null);
+      }, 2000);
+      
+    } catch (error) {
+      // O erro já foi tratado e exibido pelo hook
+      console.error('Erro ao excluir classe:', error);
+    }
+  };
+
+  // Handler para fechar modal de exclusão
+  const handleCloseDeleteModal = useCallback(() => {
+    if (!deleteLoading) {
+      setDeleteModalOpen(false);
+      setClassToDelete(null);
+      setDeleteResult(null);
+    }
+  };
+
+  return (
+    <div className="space-y-6 ultra-fast-fade">
+      {/* Header usando WelcomeHeader */}
+      <WelcomeHeader
+        title="Gestão de Classes"
+        description="Gerencie todas as classes do sistema educacional. Organize por níveis de ensino, visualize informações detalhadas e mantenha a estrutura curricular sempre atualizada."
+        iconMain={<GraduationCap className="h-8 w-8 text-white" />}
+        iconBtnLeft={<Download className="w-5 h-5 mr-2" />}
+        titleBtnRight="Nova Classe"
+        iconBtnRight={<Plus className="w-5 h-5 mr-2" />}
+        onClickBtnRight={openCreateModal}
+      />
+
+      {/* Stats Cards usando StatCard */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+        <StatCard
+          title="Total de Classes"
+          value={stats.total.toString()}
+          change="+5.2%"
+          changeType="up"
+          icon={GraduationCap}
+          color="text-[#182F59]"
+          bgColor="bg-gradient-to-br from-blue-50 via-white to-blue-50/50"
+          accentColor="bg-gradient-to-br from-[#182F59] to-[#1a3260]"
+        />
+
+        <StatCard
+          title="Classes Ativas"
+          value={stats.active.toString()}
+          change="Ativas"
+          changeType="neutral"
+          icon={CheckCircle}
+          color="text-emerald-600"
+          bgColor="bg-gradient-to-br from-emerald-50 via-white to-emerald-50/50"
+          accentColor="bg-gradient-to-br from-emerald-500 to-green-600"
+        />
+
+        <StatCard
+          title="Classes Inativas"
+          value={stats.inactive.toString()}
+          change="Inativas"
+          changeType="neutral"
+          icon={XCircle}
+          color="text-red-600"
+          bgColor="bg-gradient-to-br from-red-50 via-white to-red-50/50"
+          accentColor="bg-gradient-to-br from-red-500 to-red-600"
+        />
+
+        <StatCard
+          title="Total de Páginas"
+          value={(pagination?.totalPages || 0).toString()}
+          change={`Página ${currentPage}`}
+          changeType="neutral"
+          icon={BookOpen}
+          color="text-[#FFD002]"
+          bgColor="bg-gradient-to-br from-amber-50 via-white to-yellow-50/50"
+          accentColor="bg-gradient-to-br from-[#FFD002] to-[#F5DEB3]"
+        />
+      </div>
+
+      {/* Filtros e Busca usando FilterSearchCard */}
+      <FilterSearchCard
+        title="Filtros e Busca"
+        searchPlaceholder="Buscar por classe..."
+        searchValue={searchTerm}
+        onSearchChange={handleSearch}
+      />
+
+      {/* Tabela de Classes */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <GraduationCap className="h-5 w-5" />
+              <span>Lista de Classes</span>
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Classe</TableHead>
+                  <TableHead>Nota Máxima</TableHead>
+                  <TableHead>Exame</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8">
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#F9CD1D] loading-spinner"></div>
+                        <span>Carregando classes...</span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : error ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8">
+                      <div className="text-red-600">
+                        <p>Erro ao carregar classes: {error}</p>
+                        <Button onClick={refetch} variant="outline" className="mt-2">
+                          Tentar novamente
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : classes.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8">
+                      <div className="text-gray-500">
+                        <GraduationCap className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                        <p>Nenhuma classe encontrada</p>
+                        <Button onClick={openCreateModal} variant="outline" className="mt-2">
+                          <Plus className="w-4 h-4 mr-2" />
+                          Criar primeira classe
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  classes.map((classe) => (
+                    <TableRow key={classe.codigo}>
+                      <TableCell>
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 rounded-full bg-[#F9CD1D]/10 flex items-center justify-center">
+                            <GraduationCap className="h-5 w-5 text-[#F9CD1D]" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">{classe.designacao}</p>
+                            <p className="text-sm text-gray-500">Código: {classe.codigo}</p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-medium text-gray-900">{classe.notaMaxima}</span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={classe.exame ? "default" : "secondary"}>
+                          {classe.exame ? "Sim" : "Não"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={classe.status === 1 ? "default" : "secondary"}
+                          className={classe.status === 1 ? "bg-emerald-100 text-emerald-800" : ""}
+                        >
+                          {classe.status === 1 ? "Ativa" : "Inativa"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => openEditModal(classe)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleDeleteClick(classe)}
+                              className="text-red-600 focus:text-red-600"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Excluir
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Paginação */}
+          {pagination && pagination.totalPages > 1 && (
+            <div className="flex items-center justify-between space-x-2 py-4">
+              <div className="text-sm text-gray-500">
+                Mostrando {((currentPage - 1) * limit) + 1} a {Math.min(currentPage * limit, pagination.totalItems)} de {pagination.totalItems} classes
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(Math.max(currentPage - 1, 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Anterior
+                </Button>
+                <div className="flex items-center space-x-1">
+                  {(() => {
+                    const maxPagesToShow = 5;
+                    const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+                    const endPage = Math.min(pagination.totalPages, startPage + maxPagesToShow - 1);
+                    const adjustedStartPage = Math.max(1, endPage - maxPagesToShow + 1);
+
+                    const pages = [];
+
+                    // Primeira página
+                    if (adjustedStartPage > 1) {
+                      pages.push(
+                        <Button
+                          key={1}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePageChange(1)}
+                        >
+                          1
+                        </Button>
+                      );
+                      if (adjustedStartPage > 2) {
+                        pages.push(<span key="ellipsis1" className="px-2">...</span>);
+                      }
+                    }
+
+                    // Páginas do meio
+                    for (let i = adjustedStartPage; i <= endPage; i++) {
+                      pages.push(
+                        <Button
+                          key={i}
+                          variant={currentPage === i ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handlePageChange(i)}
+                          className={currentPage === i ? "bg-[#182F59] hover:bg-[#1a3260]" : ""}
+                        >
+                          {i}
+                        </Button>
+                      );
+                    }
+
+                    // Última página
+                    if (endPage < pagination.totalPages) {
+                      if (endPage < pagination.totalPages - 1) {
+                        pages.push(<span key="ellipsis2" className="px-2">...</span>);
+                      }
+                      pages.push(
+                        <Button
+                          key={pagination.totalPages}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePageChange(pagination.totalPages)}
+                        >
+                          {pagination.totalPages}
+                        </Button>
+                      );
+                    }
+
+                    return pages;
+                  })()}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(Math.min(currentPage + 1, pagination.totalPages))}
+                  disabled={currentPage === pagination.totalPages}
+                >
+                  Próximo
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Modais */}
+      <ClassModal
+        open={isModalOpen}
+        onOpenChange={closeModal}
+        classItem={selectedClass}
+        onSuccess={handleModalSuccess}
+      />
+
+      {/* Modal de Confirmação de Exclusão */}
+      <ConfirmDeleteClassModal
+        open={deleteModalOpen}
+        onOpenChange={handleCloseDeleteModal}
+        onConfirm={handleConfirmDelete}
+        classItem={classToDelete}
+        loading={deleteLoading}
+        error={deleteError}
+        deleteResult={deleteResult}
+      />
+
+    </div>
+  );
+}

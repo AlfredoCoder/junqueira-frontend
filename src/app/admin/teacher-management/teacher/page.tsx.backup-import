@@ -1,0 +1,594 @@
+'use client';
+
+import React, { useCallback, { useState, useEffect } } from 'react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'react-toastify';
+import {
+  Card, CardContent, CardHeader, CardTitle,
+} from '@/components/ui/card';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuLabel, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Users, Plus, MoreHorizontal, Edit, Trash2, Eye,
+  GraduationCap, Mail, Phone, Calendar, BookOpen,
+  ChevronLeft, ChevronRight, UserCheck, Save
+} from 'lucide-react';
+
+import StatCard from '@/components/layout/StatCard';
+import { WelcomeHeader } from '@/components/dashboard';
+import { IProfessor, IProfessorInput } from '@/types/professor.types';
+
+export default function ProfessoresPage() {
+  const router = useRouter();
+  
+  // Estados principais
+  const [professores, setProfessores] = useState<IProfessor[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  
+  // Estados do modal
+  const [showModal, setShowModal] = useState(false);
+  const [editingProfessor, setEditingProfessor] = useState<IProfessor | null>(null);
+  const [formData, setFormData] = useState<IProfessorInput>({
+    nome: '',
+    email: '',
+    telefone: '',
+    formacao: '',
+    nivelAcademico: 'Licenciado',
+    especialidade: '',
+    numeroFuncionario: '',
+    dataAdmissao: '',
+    status: 'Activo'
+  });
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  
+  // Estados de estatísticas
+  const [stats, setStats] = useState({
+    total: 0,
+    activos: 0,
+    inactivos: 0,
+    atribuicoes: 0
+  });
+
+  // Carregar professores
+  useEffect(() => {
+    carregarProfessores();
+  }, []);
+
+  // Gerar próximo número de funcionário
+  const gerarProximoNumeroFuncionario = async (): Promise<string> => {
+    try {
+      // Buscar todos os números de funcionário existentes
+      const numerosExistentes = professores
+        .map(p => p.numeroFuncionario)
+        .filter(num => num && num.startsWith('PROF'))
+        .map(num => parseInt(num!.replace('PROF', '')))
+        .filter(num => !isNaN(num))
+        .sort((a, b) => a - b);
+
+      // Encontrar o próximo número disponível
+      let proximoNumero = 1;
+      for (const num of numerosExistentes) {
+        if (num === proximoNumero) {
+          proximoNumero++;
+        } else {
+          break;
+        }
+      }
+
+      // Formatar com 3 dígitos
+      return `PROF${proximoNumero.toString().padStart(3, '0')}`;
+    } catch (error) {
+      console.error('Erro ao gerar número de funcionário:', error);
+      return 'PROF001';
+    }
+  };
+
+  const carregarProfessores = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('http://localhost:8000/api/professores');
+      const data = await response.json();
+      
+      if (data.success) {
+        setProfessores(data.data || []);
+        calcularEstatisticas(data.data || []);
+      } else {
+        toast.error('Erro ao carregar professores');
+      }
+    } catch (error) {
+      console.error('Erro ao carregar professores:', error);
+      toast.error('Erro de conexão');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const calcularEstatisticas = (professoresList: IProfessor[]) => {
+    const total = professoresList.length;
+    const activos = professoresList.filter(p => p.status === 'Activo').length;
+    const inactivos = total - activos;
+    const atribuicoes = professoresList.reduce((acc, p) => 
+      acc + (p._count?.tb_professor_disciplina || 0) + (p._count?.tb_professor_turma || 0), 0
+    );
+    
+    setStats({ total, activos, inactivos, atribuicoes });
+  };
+
+  // Filtrar professores
+  const professoresFiltrados = professores.filter(professor => {
+    const matchesSearch = professor.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         professor.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         professor.formacao.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || professor.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
+
+  // Paginação
+  const totalPages = Math.ceil(professoresFiltrados.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const professoresPaginados = professoresFiltrados.slice(startIndex, startIndex + itemsPerPage);
+
+  // Handlers do formulário
+  const handleInputChange = useCallback((field: keyof IProfessorInput, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      const url = editingProfessor 
+        ? `http://localhost:8000/api/professores/${editingProfessor.codigo}`
+        : 'http://localhost:8000/api/professores';
+      
+      const method = editingProfessor ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success(editingProfessor ? 'Professor atualizado!' : 'Professor criado!');
+        setShowModal(false);
+        resetForm();
+        carregarProfessores();
+      } else {
+        setMessage({ type: 'error', text: data.message || 'Erro ao salvar professor' });
+      }
+    } catch (error) {
+      console.error('Erro ao salvar professor:', error);
+      setMessage({ type: 'error', text: 'Erro de conexão' });
+    }
+  };
+
+  const handleEdit = useCallback((professor: IProfessor) => {
+    setEditingProfessor(professor);
+    setFormData({
+      nome: professor.nome,
+      email: professor.email,
+      telefone: professor.telefone || '',
+      formacao: professor.formacao,
+      nivelAcademico: professor.nivelAcademico,
+      especialidade: professor.especialidade || '',
+      numeroFuncionario: professor.numeroFuncionario || '',
+      dataAdmissao: professor.dataAdmissao ? professor.dataAdmissao.split('T')[0] : '',
+      status: professor.status
+    });
+    setShowModal(true);
+  };
+
+  const handleDelete = async (professor: IProfessor) => {
+    if (!confirm(`Tem certeza que deseja excluir o professor ${professor.nome}?`)) return;
+    
+    try {
+      const response = await fetch(`http://localhost:8000/api/professores/${professor.codigo}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Mostrar mensagem específica baseada no tipo de exclusão
+        if (data.type === 'soft_delete') {
+          toast.success('Professor inativado (possui notas lançadas)');
+        } else if (data.type === 'cascade_delete') {
+          toast.success('Professor e atribuições excluídos com sucesso');
+        } else {
+          toast.success('Professor excluído com sucesso');
+        }
+        
+        carregarProfessores();
+      } else {
+        const data = await response.json();
+        toast.error(data.message || 'Erro ao excluir professor');
+      }
+    } catch (error) {
+      console.error('Erro ao excluir professor:', error);
+      toast.error('Erro de conexão ao excluir professor');
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      nome: '',
+      email: '',
+      telefone: '',
+      formacao: '',
+      nivelAcademico: 'Licenciado',
+      especialidade: '',
+      numeroFuncionario: '',
+      dataAdmissao: '',
+      status: 'Activo'
+    });
+    setEditingProfessor(null);
+    setMessage(null);
+  };
+
+  const openNewModal = async () => {
+    resetForm();
+    // Gerar automaticamente o número de funcionário
+    const proximoNumero = await gerarProximoNumeroFuncionario();
+    setFormData(prev => ({ ...prev, numeroFuncionario: proximoNumero }));
+    setShowModal(true);
+  };
+
+  return (
+    <div className="space-y-6 ultra-fast-fade">
+        {/* Header */}
+        <WelcomeHeader 
+          title="Gestão de Professores"
+        />
+
+        {/* Estatísticas */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <StatCard
+            title="Total de Professores"
+            value={stats.total.toString()}
+            icon={Users}
+            change="0"
+            changeType="up"
+            color="text-blue-600"
+            bgColor="bg-blue-50"
+            accentColor="border-blue-200"
+          />
+          <StatCard
+            title="Professores Ativos"
+            value={stats.activos.toString()}
+            icon={UserCheck}
+            change="0"
+            changeType="up"
+            color="text-green-600"
+            bgColor="bg-green-50"
+            accentColor="border-green-200"
+          />
+          <StatCard
+            title="Professores Inativos"
+            value={stats.inactivos.toString()}
+            icon={Users}
+            change="0"
+            changeType="down"
+            color="text-orange-600"
+            bgColor="bg-orange-50"
+            accentColor="border-orange-200"
+          />
+          <StatCard
+            title="Total de Atribuições"
+            value={stats.atribuicoes.toString()}
+            icon={BookOpen}
+            change="0"
+            changeType="up"
+            color="text-purple-600"
+            bgColor="bg-purple-50"
+            accentColor="border-purple-200"
+          />
+        </div>
+
+        {/* Filtros e Busca */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Filtros</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label>Buscar</Label>
+                <Input
+                  placeholder="Nome, email ou formação..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label>Status</Label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="Activo">Ativos</SelectItem>
+                    <SelectItem value="Inactivo">Inativos</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-end">
+                <Button onClick={openNewModal} className="w-full">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Novo Professor
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Tabela de Professores */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Lista de Professores ({professoresFiltrados.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="text-center py-8">Carregando...</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Formação</TableHead>
+                      <TableHead>Nível</TableHead>
+                      <TableHead>Especialidade</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Atribuições</TableHead>
+                      <TableHead>Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {professoresPaginados.map((professor) => (
+                      <TableRow key={professor.codigo}>
+                        <TableCell className="font-medium">{professor.nome}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center">
+                            <Mail className="w-4 h-4 mr-2 text-gray-400" />
+                            {professor.email}
+                          </div>
+                        </TableCell>
+                        <TableCell>{professor.formacao}</TableCell>
+                        <TableCell>{professor.nivelAcademico}</TableCell>
+                        <TableCell>{professor.especialidade || '-'}</TableCell>
+                        <TableCell>
+                          <Badge variant={professor.status === 'Activo' ? 'default' : 'secondary'}>
+                            {professor.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            <div>Disciplinas: {professor._count?.tb_professor_disciplina || 0}</div>
+                            <div>Turmas: {professor._count?.tb_professor_turma || 0}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                              <DropdownMenuItem onClick={() => handleEdit(professor)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => router.push(`/admin/teacher-management/teacher/details/${professor.codigo}`)}
+                              >
+                                <Eye className="mr-2 h-4 w-4" />
+                                Ver Detalhes
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleDelete(professor)}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Excluir
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+
+            {/* Paginação */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-4">
+                <div className="text-sm text-gray-600">
+                  Mostrando {startIndex + 1} a {Math.min(startIndex + itemsPerPage, professoresFiltrados.length)} de {professoresFiltrados.length} professores
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <span className="text-sm">
+                    Página {currentPage} de {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Modal de Criação/Edição */}
+        <Dialog open={showModal} onOpenChange={setShowModal}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>
+                {editingProfessor ? 'Editar Professor' : 'Novo Professor'}
+              </DialogTitle>
+            </DialogHeader>
+            
+            {message && (
+              <Alert className={message.type === 'error' ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50'}>
+                <AlertDescription className={message.type === 'error' ? 'text-red-800' : 'text-green-800'}>
+                  {message.text}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="nome">Nome Completo *</Label>
+                  <Input
+                    id="nome"
+                    value={formData.nome}
+                    onChange={(e) => handleInputChange('nome', e.target.value)}
+                    placeholder="Nome completo do professor"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="email">Email *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    placeholder="email@exemplo.com"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="telefone">Telefone</Label>
+                  <Input
+                    id="telefone"
+                    value={formData.telefone}
+                    onChange={(e) => handleInputChange('telefone', e.target.value)}
+                    placeholder="+244 900 000 000"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="numeroFuncionario">Número de Funcionário</Label>
+                  <Input
+                    id="numeroFuncionario"
+                    value={formData.numeroFuncionario}
+                    readOnly
+                    className="bg-gray-50 cursor-not-allowed"
+                    placeholder="Auto-gerado: PROF001"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    {editingProfessor ? 'Número não pode ser alterado' : 'Gerado automaticamente'}
+                  </p>
+                </div>
+                <div>
+                  <Label htmlFor="formacao">Formação *</Label>
+                  <Input
+                    id="formacao"
+                    value={formData.formacao}
+                    onChange={(e) => handleInputChange('formacao', e.target.value)}
+                    placeholder="Licenciatura em Matemática"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="nivelAcademico">Nível Acadêmico *</Label>
+                  <Select value={formData.nivelAcademico} onValueChange={(value) => handleInputChange('nivelAcademico', value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Licenciado">Licenciado</SelectItem>
+                      <SelectItem value="Mestre">Mestre</SelectItem>
+                      <SelectItem value="Doutor">Doutor</SelectItem>
+                      <SelectItem value="Pós-Graduado">Pós-Graduado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="especialidade">Especialidade</Label>
+                  <Input
+                    id="especialidade"
+                    value={formData.especialidade}
+                    onChange={(e) => handleInputChange('especialidade', e.target.value)}
+                    placeholder="Matemática Aplicada"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="dataAdmissao">Data de Admissão</Label>
+                  <Input
+                    id="dataAdmissao"
+                    type="date"
+                    value={formData.dataAdmissao}
+                    onChange={(e) => handleInputChange('dataAdmissao', e.target.value)}
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <Label htmlFor="status">Status</Label>
+                  <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Activo">Ativo</SelectItem>
+                      <SelectItem value="Inactivo">Inativo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button type="button" variant="outline" onClick={() => setShowModal(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit">
+                  <Save className="w-4 h-4 mr-2" />
+                  {editingProfessor ? 'Atualizar' : 'Criar'} Professor
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+    </div>
+  );
+}

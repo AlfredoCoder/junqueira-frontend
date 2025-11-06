@@ -1,0 +1,479 @@
+"use client";
+
+import React, { useCallback, useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  ArrowLeft,
+  Save,
+  UserCheck,
+  School,
+  Clock,
+  Users,
+  Loader2,
+} from 'lucide-react';
+
+interface DirectorTurmaFormData {
+  professor: string;
+  email: string;
+  telefone: string;
+  classe: string;
+  turma: string;
+  curso: string;
+  sala: string;
+  periodo: string;
+  capacidade: number;
+  status: string;
+  dataAtribuicao: string;
+  formacao: string;
+  especialidade: string;
+}
+
+export default function EditDirectorTurma() {
+  const params = useParams();
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [formData, setFormData] = useState<DirectorTurmaFormData>({
+    professor: '',
+    email: '',
+    telefone: '',
+    classe: '',
+    turma: '',
+    curso: '',
+    sala: '',
+    periodo: '',
+    capacidade: 0,
+    status: '',
+    dataAtribuicao: '',
+    formacao: '',
+    especialidade: ''
+  });
+
+  // Dados mockados para selects
+  const professoresData = [
+    { id: "1", nome: "Prof. Maria Silva Santos", email: "maria.santos@Complexo Abilio Junqueira.edu.ao", formacao: "Licenciatura em Informática", especialidade: "Gestão de Sistemas" },
+    { id: "2", nome: "Prof. João Manuel Costa", email: "joao.costa@Complexo Abilio Junqueira.edu.ao", formacao: "Licenciatura em Contabilidade", especialidade: "Gestão Financeira" },
+    { id: "3", nome: "Prof. Ana Paula Francisco", email: "ana.francisco@Complexo Abilio Junqueira.edu.ao", formacao: "Licenciatura em Administração", especialidade: "Gestão Empresarial" },
+    { id: "4", nome: "Prof. Carlos Alberto Neto", email: "carlos.neto@Complexo Abilio Junqueira.edu.ao", formacao: "Licenciatura em Economia", especialidade: "Análise Econômica" }
+  ];
+
+  const classesData = ["10ª Classe", "11ª Classe", "12ª Classe", "13ª Classe"];
+  const cursosData = ["Informática de Gestão", "Contabilidade e Gestão", "Administração e Gestão", "Economia"];
+  const salasData = ["A1", "A2", "A3", "B1", "B2", "B3", "C1", "C2"];
+  const periodosData = ["Manhã", "Tarde", "Noite"];
+  const statusData = ["Ativo", "Inativo", "Suspenso"];
+
+  // Dados mockados do diretor existente
+  const directorsData = [
+    {
+      id: 1,
+      professor: "Prof. Maria Silva Santos",
+      email: "maria.santos@Complexo Abilio Junqueira.edu.ao",
+      telefone: "+244 923 456 789",
+      classe: "10ª Classe",
+      turma: "IG-10A-2024",
+      curso: "Informática de Gestão",
+      sala: "A1",
+      periodo: "Manhã",
+      capacidade: 40,
+      status: "Ativo",
+      dataAtribuicao: "2024-02-15",
+      formacao: "Licenciatura em Informática",
+      especialidade: "Gestão de Sistemas"
+    },
+    {
+      id: 2,
+      professor: "Prof. João Manuel Costa",
+      email: "joao.costa@Complexo Abilio Junqueira.edu.ao",
+      telefone: "+244 924 567 890",
+      classe: "11ª Classe",
+      turma: "CG-11B-2024",
+      curso: "Contabilidade e Gestão",
+      sala: "B2",
+      periodo: "Tarde",
+      capacidade: 35,
+      status: "Ativo",
+      dataAtribuicao: "2024-01-20",
+      formacao: "Licenciatura em Contabilidade",
+      especialidade: "Gestão Financeira"
+    }
+  ];
+
+  useEffect(() => {
+    const loadDirector = async () => {
+      setIsLoading(true);
+      // Simular carregamento
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const directorId = parseInt(params.id as string);
+      const director = directorsData.find(d => d.id === directorId);
+      
+      if (director) {
+        setFormData({
+          professor: director.professor,
+          email: director.email,
+          telefone: director.telefone,
+          classe: director.classe,
+          turma: director.turma,
+          curso: director.curso,
+          sala: director.sala,
+          periodo: director.periodo,
+          capacidade: director.capacidade,
+          status: director.status,
+          dataAtribuicao: director.dataAtribuicao,
+          formacao: director.formacao,
+          especialidade: director.especialidade
+        });
+      }
+      
+      setIsLoading(false);
+    }, []);
+
+    loadDirector();
+  }, [params.id]);
+
+  const handleInputChange = useCallback((field: keyof DirectorTurmaFormData, value: string | number) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  }, []);
+
+  const handleProfessorChange = useCallback((professorNome: string) => {
+    const professor = professoresData.find(p => p.nome === professorNome);
+    if (professor) {
+      setFormData(prev => ({
+        ...prev,
+        professor: professor.nome,
+        email: professor.email,
+        formacao: professor.formacao,
+        especialidade: professor.especialidade
+      }));
+    }
+  }, []);
+
+  const generateTurmaDesignation = (classe: string, curso: string) => {
+    if (!classe || !curso) return '';
+    
+    const classeNum = classe.replace('ª Classe', '');
+    const cursoCode = curso === 'Informática de Gestão' ? 'IG' :
+                     curso === 'Contabilidade e Gestão' ? 'CG' :
+                     curso === 'Administração e Gestão' ? 'AG' : 'EC';
+    
+    return `${cursoCode}-${classeNum}A-2024`;
+  }, []);
+
+  useEffect(() => {
+    if (formData.classe && formData.curso) {
+      const turmaDesignation = generateTurmaDesignation(formData.classe, formData.curso);
+      setFormData(prev => ({
+        ...prev,
+        turma: turmaDesignation
+      }));
+    }
+  }, [formData.classe, formData.curso]);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    
+    // Simular salvamento
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    console.log('Dados salvos:', formData);
+    
+    setIsSaving(false);
+    router.push(`/admin/teacher-management/director-turma/details/${params.id}`);
+  }, []);
+
+  const handleCancel = useCallback(() => {
+    router.back();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 ultra-fast-fade">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#F9CD1D] mx-auto mb-4 loading-spinner"></div>
+            <p className="text-gray-600">Carregando dados do diretor...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 ultra-fast-fade">
+      {/* Header Fixo */}
+      <div className="sticky top-0 z-50 bg-white border-b border-gray-200 -mx-6 px-6 py-4 mb-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCancel}
+              className="hover:bg-gray-100"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Cancelar
+            </Button>
+            <div className="h-6 w-px bg-gray-300"></div>
+            <div>
+              <h1 className="text-xl font-semibold text-gray-900">
+                Editar Diretor de Turma
+              </h1>
+              <p className="text-sm text-gray-600">
+                Atualize as informações do diretor de turma
+              </p>
+            </div>
+          </div>
+          <Button 
+            onClick={handleSave}
+            disabled={isSaving}
+            className="bg-[#F9CD1D] hover:bg-[#F9CD1D]/90 text-white"
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin loading-spinner" />
+                Salvando...
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4 mr-2" />
+                Salvar Alterações
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+
+      <div className="max-w-4xl mx-auto space-y-8 ultra-fast-fade">
+        {/* Informações do Professor */}
+        <Card className="border-l-4 border-l-green-500">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <UserCheck className="h-5 w-5 text-green-600" />
+              <span>Informações do Professor</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="space-y-2 ultra-fast-fade">
+                <Label htmlFor="professor">Professor *</Label>
+                <Select value={formData.professor} onValueChange={handleProfessorChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o professor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {professoresData.map((professor) => (
+                      <SelectItem key={professor.id} value={professor.nome}>
+                        {professor.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2 ultra-fast-fade">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  placeholder="email@Complexo Abilio Junqueira.edu.ao"
+                  readOnly
+                  className="bg-gray-50"
+                />
+              </div>
+
+              <div className="space-y-2 ultra-fast-fade">
+                <Label htmlFor="telefone">Telefone</Label>
+                <Input
+                  id="telefone"
+                  value={formData.telefone}
+                  onChange={(e) => handleInputChange('telefone', e.target.value)}
+                  placeholder="+244 9XX XXX XXX"
+                />
+              </div>
+
+              <div className="space-y-2 ultra-fast-fade">
+                <Label htmlFor="dataAtribuicao">Data de Atribuição</Label>
+                <Input
+                  id="dataAtribuicao"
+                  type="date"
+                  value={formData.dataAtribuicao}
+                  onChange={(e) => handleInputChange('dataAtribuicao', e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2 ultra-fast-fade">
+                <Label htmlFor="formacao">Formação</Label>
+                <Input
+                  id="formacao"
+                  value={formData.formacao}
+                  readOnly
+                  className="bg-gray-50"
+                />
+              </div>
+
+              <div className="space-y-2 ultra-fast-fade">
+                <Label htmlFor="especialidade">Especialidade</Label>
+                <Input
+                  id="especialidade"
+                  value={formData.especialidade}
+                  readOnly
+                  className="bg-gray-50"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Informações da Turma */}
+        <Card className="border-l-4 border-l-blue-500">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <School className="h-5 w-5 text-blue-600" />
+              <span>Informações da Turma</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="space-y-2 ultra-fast-fade">
+                <Label htmlFor="classe">Classe *</Label>
+                <Select value={formData.classe} onValueChange={(value) => handleInputChange('classe', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a classe" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {classesData.map((classe) => (
+                      <SelectItem key={classe} value={classe}>
+                        {classe}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2 ultra-fast-fade">
+                <Label htmlFor="curso">Curso *</Label>
+                <Select value={formData.curso} onValueChange={(value) => handleInputChange('curso', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o curso" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {cursosData.map((curso) => (
+                      <SelectItem key={curso} value={curso}>
+                        {curso}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2 ultra-fast-fade">
+                <Label htmlFor="turma">Designação da Turma</Label>
+                <Input
+                  id="turma"
+                  value={formData.turma}
+                  readOnly
+                  className="bg-gray-50"
+                  placeholder="Gerado automaticamente"
+                />
+              </div>
+
+              <div className="space-y-2 ultra-fast-fade">
+                <Label htmlFor="sala">Sala *</Label>
+                <Select value={formData.sala} onValueChange={(value) => handleInputChange('sala', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a sala" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {salasData.map((sala) => (
+                      <SelectItem key={sala} value={sala}>
+                        Sala {sala}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2 ultra-fast-fade">
+                <Label htmlFor="periodo">Período *</Label>
+                <Select value={formData.periodo} onValueChange={(value) => handleInputChange('periodo', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o período" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {periodosData.map((periodo) => (
+                      <SelectItem key={periodo} value={periodo}>
+                        {periodo}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2 ultra-fast-fade">
+                <Label htmlFor="capacidade">Capacidade da Turma</Label>
+                <Input
+                  id="capacidade"
+                  type="number"
+                  value={formData.capacidade}
+                  onChange={(e) => handleInputChange('capacidade', parseInt(e.target.value))}
+                  placeholder="40"
+                  min="1"
+                  max="50"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Status */}
+        <Card className="border-l-4 border-l-purple-500">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Clock className="h-5 w-5 text-purple-600" />
+              <span>Status da Atribuição</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 ultra-fast-fade">
+              <Label htmlFor="status">Status *</Label>
+              <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
+                <SelectTrigger className="max-w-xs">
+                  <SelectValue placeholder="Selecione o status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {statusData.map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {status}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}

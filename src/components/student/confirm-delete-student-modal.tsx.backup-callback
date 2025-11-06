@@ -1,0 +1,287 @@
+"use client"
+
+import React from 'react'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { AlertTriangle, Trash2, Info } from 'lucide-react'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+
+interface StudentDeleteInfo {
+  codigo: number
+  nome: string
+  documento?: string
+  status: number
+  hasMatricula?: boolean
+}
+
+interface DeleteResult {
+  tipo?: 'cascade_delete' | 'soft_delete' | 'hard_delete'
+  detalhes?: {
+    confirmacoes?: number
+    notasCredito?: number
+    pagamentos?: number
+    pagamentosPrincipais?: number
+    servicos?: number
+    transferencias?: number
+    matricula?: number
+    encarregadoExcluido?: boolean
+  }
+  info?: string
+}
+
+interface ConfirmDeleteStudentModalProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onConfirm: () => void
+  student: StudentDeleteInfo | null
+  loading?: boolean
+  error?: string | null
+  deleteResult?: DeleteResult | null
+}
+
+export function ConfirmDeleteStudentModal({ 
+  open, 
+  onOpenChange, 
+  onConfirm, 
+  student,
+  loading = false,
+  error = null,
+  deleteResult = null
+}: ConfirmDeleteStudentModalProps) {
+  
+  const handleConfirm = useCallback(() => {
+    onConfirm()
+  }
+
+  const handleCancel = useCallback(() => {
+    onOpenChange(false)
+  }
+
+  // Se a exclusão foi bem-sucedida e temos resultado
+  const showSuccessResult = deleteResult && !error
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <div className="flex items-center space-x-2">
+            <div className={`p-2 rounded-full ${showSuccessResult ? 'bg-emerald-100' : 'bg-red-100'}`}>
+              {showSuccessResult ? (
+                <Trash2 className="h-5 w-5 text-emerald-600" />
+              ) : (
+                <AlertTriangle className="h-5 w-5 text-red-600" />
+              )}
+            </div>
+            <DialogTitle className={showSuccessResult ? "text-emerald-900" : "text-red-900"}>
+              {showSuccessResult ? 'Aluno Excluído com Sucesso' : 'Confirmar Exclusão de Aluno'}
+            </DialogTitle>
+          </div>
+          
+          {!showSuccessResult && (
+            <DialogDescription className="pt-2">
+              Esta ação irá excluir permanentemente o aluno e todas as suas dependências.
+            </DialogDescription>
+          )}
+        </DialogHeader>
+
+        {/* Informações do Aluno */}
+        {student && !showSuccessResult && (
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3 ultra-fast-fade">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#182F59] to-[#1a3260] flex items-center justify-center text-white font-semibold text-lg">
+                {student.nome.charAt(0)}
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-gray-900">{student.nome}</h3>
+                <p className="text-sm text-gray-500">
+                  ID: {student.codigo} {student.documento && `• Doc: ${student.documento}`}
+                </p>
+              </div>
+            </div>
+
+            {/* Aviso sobre exclusão em cascata */}
+            <Alert className="bg-amber-50 border-amber-200">
+              <Info className="h-4 w-4 text-amber-600" />
+              <AlertTitle className="text-amber-900 text-sm font-semibold">
+                Exclusão em Cascata
+              </AlertTitle>
+              <AlertDescription className="text-amber-800 text-sm">
+                As seguintes dependências serão excluídas automaticamente:
+                <ul className="list-disc list-inside mt-2 space-y-1 text-xs">
+                  <li>Confirmações de matrícula</li>
+                  <li>Notas de crédito</li>
+                  <li>Pagamentos (principais e secundários)</li>
+                  <li>Serviços associados</li>
+                  <li>Transferências</li>
+                  <li>Matrícula (se existir)</li>
+                  <li>Encarregado (se não tiver outros alunos)</li>
+                </ul>
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
+
+        {/* Resultado da exclusão */}
+        {showSuccessResult && deleteResult && (
+          <div className="space-y-4 ultra-fast-fade">
+            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+              <div className="flex items-start space-x-3">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <Trash2 className="h-4 w-4 text-emerald-600" />
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-semibold text-emerald-900 mb-1">
+                    Exclusão realizada com sucesso
+                  </h4>
+                  <p className="text-sm text-emerald-700">
+                    {student?.nome} foi removido do sistema juntamente com todas as suas dependências.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Detalhes da exclusão */}
+            {deleteResult.detalhes && (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                  Itens Excluídos
+                </h4>
+                <div className="grid grid-cols-2 gap-3">
+                  {deleteResult.detalhes.confirmacoes !== undefined && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Confirmações:</span>
+                      <span className="font-semibold text-gray-900">
+                        {deleteResult.detalhes.confirmacoes}
+                      </span>
+                    </div>
+                  )}
+                  {deleteResult.detalhes.pagamentos !== undefined && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Pagamentos:</span>
+                      <span className="font-semibold text-gray-900">
+                        {deleteResult.detalhes.pagamentos}
+                      </span>
+                    </div>
+                  )}
+                  {deleteResult.detalhes.pagamentosPrincipais !== undefined && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Pag. Principais:</span>
+                      <span className="font-semibold text-gray-900">
+                        {deleteResult.detalhes.pagamentosPrincipais}
+                      </span>
+                    </div>
+                  )}
+                  {deleteResult.detalhes.notasCredito !== undefined && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Notas Crédito:</span>
+                      <span className="font-semibold text-gray-900">
+                        {deleteResult.detalhes.notasCredito}
+                      </span>
+                    </div>
+                  )}
+                  {deleteResult.detalhes.servicos !== undefined && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Serviços:</span>
+                      <span className="font-semibold text-gray-900">
+                        {deleteResult.detalhes.servicos}
+                      </span>
+                    </div>
+                  )}
+                  {deleteResult.detalhes.transferencias !== undefined && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Transferências:</span>
+                      <span className="font-semibold text-gray-900">
+                        {deleteResult.detalhes.transferencias}
+                      </span>
+                    </div>
+                  )}
+                  {deleteResult.detalhes.matricula !== undefined && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Matrícula:</span>
+                      <span className="font-semibold text-gray-900">
+                        {deleteResult.detalhes.matricula ? 'Sim' : 'Não'}
+                      </span>
+                    </div>
+                  )}
+                  {deleteResult.detalhes.encarregadoExcluido !== undefined && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Encarregado:</span>
+                      <span className="font-semibold text-gray-900">
+                        {deleteResult.detalhes.encarregadoExcluido ? 'Excluído' : 'Mantido'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {deleteResult.info && (
+              <Alert className="bg-blue-50 border-blue-200">
+                <Info className="h-4 w-4 text-blue-600" />
+                <AlertDescription className="text-blue-800 text-sm">
+                  {deleteResult.info}
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
+        )}
+
+        {/* Mensagem de erro */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-start space-x-3">
+              <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <h4 className="text-sm font-semibold text-red-800 mb-1">
+                  Erro ao excluir aluno
+                </h4>
+                <p className="text-sm text-red-700 leading-relaxed">{error}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button
+            type="button"
+            variant={showSuccessResult ? "default" : "outline"}
+            onClick={handleCancel}
+            disabled={loading}
+            className={showSuccessResult ? "bg-[#182F59] hover:bg-[#1a3260]" : ""}
+          >
+            {showSuccessResult ? 'Fechar' : (error ? 'Fechar' : 'Cancelar')}
+          </Button>
+          {!error && !showSuccessResult && (
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleConfirm}
+              disabled={loading}
+            >
+              {loading ? (
+                <div className="flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white loading-spinner"></div>
+                  <span>Excluindo...</span>
+                </div>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Confirmar Exclusão
+                </>
+              )}
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}

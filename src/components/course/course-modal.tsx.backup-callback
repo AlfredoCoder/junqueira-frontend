@@ -1,0 +1,160 @@
+"use client"
+
+import React, { useState, useEffect } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+
+import { useCreateCourse, useUpdateCourse } from '@/hooks/useCourse'
+import { ICourse, ICourseInput } from '@/types/course.types'
+
+interface CourseModalProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  course?: ICourse | null
+  onSuccess?: () => void
+}
+
+export function CourseModal({
+  open,
+  onOpenChange,
+  course,
+  onSuccess
+}: CourseModalProps) {
+  const [formData, setFormData] = useState<ICourseInput>({
+    designacao: '',
+    codigo_Status: 1,
+  })
+
+  const isEditing = !!course
+  const { createCourse, loading: creating, error: createError } = useCreateCourse()
+  const { updateCourse, loading: updating, error: updateError } = useUpdateCourse(course?.codigo || 0)
+
+  const loading = creating || updating
+  const error = createError || updateError
+
+  // Resetar formulário quando o modal abrir/fechar ou curso mudar
+  useEffect(() => {
+    if (open && course) {
+      setFormData({
+        designacao: course.designacao || '',
+        codigo_Status: course.codigo_Status || 1,
+      })
+    } else if (open && !course) {
+      setFormData({
+        designacao: '',
+        codigo_Status: 1,
+      })
+    }
+  }, [open, course])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    try {
+      if (isEditing && course) {
+        await updateCourse(formData)
+      } else {
+        await createCourse(formData)
+      }
+
+      onOpenChange(false)
+      onSuccess?.()
+
+      // Limpar formulário após sucesso
+      setFormData({
+        designacao: '',
+        codigo_Status: 1,
+      })
+    } catch (error) {
+      console.error('Erro ao salvar curso:', error)
+    }
+  }
+
+  const handleChange = useCallback((field: keyof ICourseInput, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }))
+  }
+
+  const handleCancel = useCallback(() => {
+    onOpenChange(false)
+    setFormData({
+      designacao: '',
+      codigo_Status: 1,
+    })
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>
+            {isEditing ? 'Editar Curso' : 'Novo Curso'}
+          </DialogTitle>
+          <DialogDescription>
+            {isEditing
+              ? 'Edite as informações do curso abaixo.'
+              : 'Preencha as informações para criar um novo curso.'
+            }
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2 ultra-fast-fade">
+            <Label htmlFor="designacao">
+              Nome do Curso <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="designacao"
+              value={formData.designacao}
+              onChange={(e) => handleChange('designacao', e.target.value)}
+              placeholder="Digite o nome do curso"
+              required
+              maxLength={45}
+            />
+          </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-md p-3">
+              <p className="text-sm text-red-600">{error}</p>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleCancel}
+              disabled={loading}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              disabled={loading || !formData.designacao.trim()}
+            >
+              {loading ? (
+                <div className="flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white loading-spinner"></div>
+                  <span>{isEditing ? 'Salvando...' : 'Criando...'}</span>
+                </div>
+              ) : (
+                isEditing ? 'Salvar Alterações' : 'Criar Curso'
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}

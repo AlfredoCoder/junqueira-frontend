@@ -1,0 +1,700 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'react-toastify';
+import {
+  Card, CardContent, CardHeader, CardTitle,
+} from '@/components/ui/card';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuLabel, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  BookOpen, Plus, MoreHorizontal, Edit, Trash2,
+  GraduationCap, Users, Award, ChevronLeft, ChevronRight
+} from 'lucide-react';
+
+import Container from '@/components/layout/Container';
+import StatCard from '@/components/layout/StatCard';
+import { WelcomeHeader } from '@/components/dashboard';
+import { IProfessorDisciplina, IProfessorTurma, IProfessor, IDisciplina, ICurso, ITurma } from '@/types/professor.types';
+
+interface AtribuicaoCompleta {
+  codigo: number;
+  professor: {
+    codigo: number;
+    nome: string;
+    numeroFuncionario?: string;
+  };
+  disciplina: {
+    codigo: number;
+    designacao: string;
+  };
+  curso: {
+    codigo: number;
+    designacao: string;
+  };
+  turma?: {
+    codigo: number;
+    designacao: string;
+  };
+  anoLectivo: string;
+  tipo: 'disciplina' | 'turma';
+  status: string;
+}
+
+export default function AtribuicoesProfessoresPage() {
+  const router = useRouter();
+  
+  // Estados principais
+  const [atribuicoes, setAtribuicoes] = useState<AtribuicaoCompleta[]>([]);
+  const [professores, setProfessores] = useState<IProfessor[]>([]);
+  const [disciplinas, setDisciplinas] = useState<IDisciplina[]>([]);
+  const [cursos, setCursos] = useState<ICurso[]>([]);
+  const [turmas, setTurmas] = useState<ITurma[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Estados de filtros
+  const [searchTerm, setSearchTerm] = useState('');
+  const [professorFilter, setProfessorFilter] = useState('all');
+  const [disciplinaFilter, setDisciplinaFilter] = useState('all');
+  const [tipoFilter, setTipoFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  
+  // Estados do modal
+  const [showModal, setShowModal] = useState(false);
+  const [formData, setFormData] = useState({
+    professorId: '',
+    disciplinaId: '',
+    cursoId: '',
+    turmaId: '',
+    anoLectivo: '2024/2025',
+    incluirTurma: false
+  });
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  
+  // Estados de estatísticas
+  const [stats, setStats] = useState({
+    totalAtribuicoes: 0,
+    atribuicoesDisciplinas: 0,
+    atribuicoesTurmas: 0,
+    professoresAtivos: 0
+  });
+
+  // Carregar dados iniciais
+  useEffect(() => {
+    carregarDados();
+  }, []);
+
+  const carregarDados = async () => {
+    try {
+      setLoading(true);
+      
+      // Carregar dados em paralelo com tratamento individual de erros
+      const urls = [
+        { name: 'atribuicoesDisciplinas', url: 'http://localhost:8000/api/professor-disciplinas' },
+        { name: 'atribuicoesTurmas', url: 'http://localhost:8000/api/professor-turmas' },
+        { name: 'professores', url: 'http://localhost:8000/api/professores' },
+        { name: 'disciplinas', url: 'http://localhost:8000/api/academic-management/disciplinas' },
+        { name: 'cursos', url: 'http://localhost:8000/api/academic-management/cursos' },
+        { name: 'turmas', url: 'http://localhost:8000/api/academic-management/turmas' }
+      ];
+
+      const responses = await Promise.all(
+        urls.map(async ({ name, url }) => {
+          try {
+            console.log(`Carregando ${name} de ${url}`);
+            const response = await fetch(url);
+            if (!response.ok) {
+              console.error(`Erro ${response.status} ao carregar ${name}:`, response.statusText);
+              return { name, data: { success: false, data: [] } };
+            }
+            const data = await response.json();
+            console.log(`${name} carregado:`, data);
+            return { name, data };
+          } catch (error) {
+            console.error(`Erro ao carregar ${name}:`, error);
+            return { name, data: { success: false, data: [] } };
+          }
+        })
+      );
+
+      // Processar respostas
+      const atribuicoesDisciplinas = responses.find(r => r.name === 'atribuicoesDisciplinas')?.data || { data: [] };
+      const atribuicoesTurmas = responses.find(r => r.name === 'atribuicoesTurmas')?.data || { data: [] };
+      const professoresData = responses.find(r => r.name === 'professores')?.data || { data: [] };
+      const disciplinasData = responses.find(r => r.name === 'disciplinas')?.data || { data: [] };
+      const cursosData = responses.find(r => r.name === 'cursos')?.data || { data: [] };
+      const turmasData = responses.find(r => r.name === 'turmas')?.data || { data: [] };
+
+      // Processar dados
+      setProfessores(professoresData.data || []);
+      setDisciplinas(disciplinasData.data || []);
+      setCursos(cursosData.data || []);
+      setTurmas(turmasData.data || []);
+
+      // Combinar atribuições de disciplinas e turmas
+      const todasAtribuicoes: AtribuicaoCompleta[] = [];
+
+      // Atribuições de disciplinas
+      if (atribuicoesDisciplinas.data) {
+        atribuicoesDisciplinas.data.forEach((attr: any) => {
+          todasAtribuicoes.push({
+            codigo: attr.codigo,
+            professor: {
+              codigo: attr.codigo_Professor,
+              nome: attr.tb_professores?.nome || 'Professor não encontrado',
+              numeroFuncionario: attr.tb_professores?.numeroFuncionario
+            },
+            disciplina: {
+              codigo: attr.codigo_Disciplina,
+              designacao: attr.tb_disciplinas?.designacao || 'Disciplina não encontrada'
+            },
+            curso: {
+              codigo: attr.codigo_Curso,
+              designacao: attr.tb_cursos?.designacao || 'Curso não encontrado'
+            },
+            anoLectivo: attr.anoLectivo,
+            tipo: 'disciplina',
+            status: attr.status || 'Activo'
+          });
+        });
+      }
+
+      // Atribuições de turmas
+      if (atribuicoesTurmas.data) {
+        atribuicoesTurmas.data.forEach((attr: any) => {
+          todasAtribuicoes.push({
+            codigo: attr.codigo,
+            professor: {
+              codigo: attr.codigo_Professor,
+              nome: attr.tb_professores?.nome || 'Professor não encontrado',
+              numeroFuncionario: attr.tb_professores?.numeroFuncionario
+            },
+            disciplina: {
+              codigo: attr.codigo_Disciplina,
+              designacao: attr.tb_disciplinas?.designacao || 'Disciplina não encontrada'
+            },
+            curso: {
+              codigo: 0,
+              designacao: 'Via Turma'
+            },
+            turma: {
+              codigo: attr.codigo_Turma,
+              designacao: attr.tb_turmas?.designacao || 'Turma não encontrada'
+            },
+            anoLectivo: attr.anoLectivo,
+            tipo: 'turma',
+            status: attr.status || 'Activo'
+          });
+        });
+      }
+
+      setAtribuicoes(todasAtribuicoes);
+      calcularEstatisticas(todasAtribuicoes, professoresData.data || []);
+
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+      toast.error('Erro ao carregar dados');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const calcularEstatisticas = (atribuicoesList: AtribuicaoCompleta[], professoresList: IProfessor[]) => {
+    const totalAtribuicoes = atribuicoesList.length;
+    const atribuicoesDisciplinas = atribuicoesList.filter(a => a.tipo === 'disciplina').length;
+    const atribuicoesTurmas = atribuicoesList.filter(a => a.tipo === 'turma').length;
+    const professoresAtivos = professoresList.filter(p => p.status === 'Activo').length;
+    
+    setStats({ totalAtribuicoes, atribuicoesDisciplinas, atribuicoesTurmas, professoresAtivos });
+  };
+
+  // Filtrar atribuições
+  const atribuicoesFiltradas = atribuicoes.filter(atribuicao => {
+    const matchesSearch = atribuicao.professor.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         atribuicao.disciplina.designacao.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         atribuicao.curso.designacao.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesProfessor = professorFilter === 'all' || atribuicao.professor.codigo.toString() === professorFilter;
+    const matchesDisciplina = disciplinaFilter === 'all' || atribuicao.disciplina.codigo.toString() === disciplinaFilter;
+    const matchesTipo = tipoFilter === 'all' || atribuicao.tipo === tipoFilter;
+    
+    return matchesSearch && matchesProfessor && matchesDisciplina && matchesTipo;
+  });
+
+  // Paginação
+  const totalPages = Math.ceil(atribuicoesFiltradas.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const atribuicoesPaginadas = atribuicoesFiltradas.slice(startIndex, startIndex + itemsPerPage);
+
+  // Handlers do formulário
+  const handleInputChange = (field: string, value: string | boolean) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      // Criar atribuição de disciplina usando a API do controlador de professores
+      const disciplinaResponse = await fetch(`http://localhost:8000/api/professores/${formData.professorId}/disciplinas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          disciplinaId: parseInt(formData.disciplinaId),
+          cursoId: parseInt(formData.cursoId),
+          anoLectivo: formData.anoLectivo
+        }),
+      });
+
+      const disciplinaData = await disciplinaResponse.json();
+
+      if (!disciplinaData.success) {
+        setMessage({ type: 'error', text: disciplinaData.message || 'Erro ao criar atribuição de disciplina' });
+        return;
+      }
+
+      // Se incluir turma, criar atribuição de turma também
+      if (formData.incluirTurma && formData.turmaId) {
+        const turmaResponse = await fetch(`http://localhost:8000/api/professores/${formData.professorId}/turmas`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            turmaId: parseInt(formData.turmaId),
+            disciplinaId: parseInt(formData.disciplinaId),
+            anoLectivo: formData.anoLectivo
+          }),
+        });
+
+        const turmaData = await turmaResponse.json();
+        
+        if (!turmaData.success) {
+          setMessage({ type: 'error', text: turmaData.message || 'Erro ao criar atribuição de turma' });
+          return;
+        }
+      }
+
+      toast.success('Atribuição(ões) criada(s) com sucesso!');
+      setShowModal(false);
+      resetForm();
+      carregarDados();
+
+    } catch (error) {
+      console.error('Erro ao criar atribuição:', error);
+      setMessage({ type: 'error', text: 'Erro de conexão' });
+    }
+  };
+
+  const handleDelete = async (atribuicao: AtribuicaoCompleta) => {
+    if (!confirm(`Tem certeza que deseja excluir esta atribuição?`)) return;
+    
+    try {
+      const endpoint = atribuicao.tipo === 'disciplina' 
+        ? `http://localhost:8000/api/professor-disciplinas/${atribuicao.codigo}`
+        : `http://localhost:8000/api/professor-turmas/${atribuicao.codigo}`;
+
+      const response = await fetch(endpoint, { method: 'DELETE' });
+
+      if (response.ok) {
+        toast.success('Atribuição excluída com sucesso!');
+        carregarDados();
+      } else {
+        const data = await response.json();
+        toast.error(data.message || 'Erro ao excluir atribuição');
+      }
+    } catch (error) {
+      console.error('Erro ao excluir atribuição:', error);
+      toast.error('Erro de conexão');
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      professorId: '',
+      disciplinaId: '',
+      cursoId: '',
+      turmaId: '',
+      anoLectivo: '2024/2025',
+      incluirTurma: false
+    });
+    setMessage(null);
+  };
+
+  const openNewModal = () => {
+    resetForm();
+    setShowModal(true);
+  };
+
+  return (
+    <Container>
+      <div className="space-y-6">
+        {/* Header */}
+        <WelcomeHeader 
+          title="Atribuições de Professores"
+        />
+
+        {/* Estatísticas */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <StatCard
+            title="Total de Atribuições"
+            value={stats.totalAtribuicoes.toString()}
+            icon={BookOpen}
+            change="0"
+            changeType="up"
+            color="text-blue-600"
+            bgColor="bg-blue-50"
+            accentColor="border-blue-200"
+          />
+          <StatCard
+            title="Disciplinas Atribuídas"
+            value={stats.atribuicoesDisciplinas.toString()}
+            icon={GraduationCap}
+            change="0"
+            changeType="up"
+            color="text-green-600"
+            bgColor="bg-green-50"
+            accentColor="border-green-200"
+          />
+          <StatCard
+            title="Turmas Atribuídas"
+            value={stats.atribuicoesTurmas.toString()}
+            icon={Users}
+            change="0"
+            changeType="up"
+            color="text-purple-600"
+            bgColor="bg-purple-50"
+            accentColor="border-purple-200"
+          />
+          <StatCard
+            title="Professores Ativos"
+            value={stats.professoresAtivos.toString()}
+            icon={Award}
+            change="0"
+            changeType="up"
+            color="text-orange-600"
+            bgColor="bg-orange-50"
+            accentColor="border-orange-200"
+          />
+        </div>
+
+        {/* Filtros e Busca */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Filtros</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <div>
+                <Label>Buscar</Label>
+                <Input
+                  placeholder="Professor, disciplina..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label>Professor</Label>
+                <Select value={professorFilter} onValueChange={setProfessorFilter}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os Professores</SelectItem>
+                    {professores.map(prof => (
+                      <SelectItem key={prof.codigo} value={prof.codigo.toString()}>
+                        {prof.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Disciplina</Label>
+                <Select value={disciplinaFilter} onValueChange={setDisciplinaFilter}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as Disciplinas</SelectItem>
+                    {disciplinas.map(disc => (
+                      <SelectItem key={disc.codigo} value={disc.codigo.toString()}>
+                        {disc.designacao}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Tipo</Label>
+                <Select value={tipoFilter} onValueChange={setTipoFilter}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os Tipos</SelectItem>
+                    <SelectItem value="disciplina">Apenas Disciplinas</SelectItem>
+                    <SelectItem value="turma">Apenas Turmas</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-end">
+                <Button onClick={openNewModal} className="w-full">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Nova Atribuição
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Tabela de Atribuições */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Lista de Atribuições ({atribuicoesFiltradas.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="text-center py-8">Carregando...</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Professor</TableHead>
+                      <TableHead>Disciplina</TableHead>
+                      <TableHead>Curso/Turma</TableHead>
+                      <TableHead>Ano Letivo</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {atribuicoesPaginadas.map((atribuicao) => (
+                      <TableRow key={`${atribuicao.tipo}-${atribuicao.codigo}`}>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{atribuicao.professor.nome}</div>
+                            {atribuicao.professor.numeroFuncionario && (
+                              <div className="text-sm text-gray-500">{atribuicao.professor.numeroFuncionario}</div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-medium">{atribuicao.disciplina.designacao}</TableCell>
+                        <TableCell>
+                          <div>
+                            <div>{atribuicao.curso.designacao}</div>
+                            {atribuicao.turma && (
+                              <div className="text-sm text-blue-600">Turma: {atribuicao.turma.designacao}</div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>{atribuicao.anoLectivo}</TableCell>
+                        <TableCell>
+                          <Badge variant={atribuicao.tipo === 'disciplina' ? 'default' : 'secondary'}>
+                            {atribuicao.tipo === 'disciplina' ? 'Disciplina' : 'Turma'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={atribuicao.status === 'Activo' ? 'default' : 'secondary'}>
+                            {atribuicao.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                              <DropdownMenuItem 
+                                onClick={() => handleDelete(atribuicao)}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Excluir
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+
+            {/* Paginação */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-4">
+                <div className="text-sm text-gray-600">
+                  Mostrando {startIndex + 1} a {Math.min(startIndex + itemsPerPage, atribuicoesFiltradas.length)} de {atribuicoesFiltradas.length} atribuições
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <span className="text-sm">
+                    Página {currentPage} de {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Modal de Nova Atribuição */}
+        <Dialog open={showModal} onOpenChange={setShowModal}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Nova Atribuição de Professor</DialogTitle>
+            </DialogHeader>
+            
+            {message && (
+              <Alert className={message.type === 'error' ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50'}>
+                <AlertDescription className={message.type === 'error' ? 'text-red-800' : 'text-green-800'}>
+                  {message.text}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="professorId">Professor *</Label>
+                  <Select value={formData.professorId} onValueChange={(value) => handleInputChange('professorId', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o professor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {professores.filter(p => p.status === 'Activo').map(prof => (
+                        <SelectItem key={prof.codigo} value={prof.codigo.toString()}>
+                          {prof.nome} {prof.numeroFuncionario && `(${prof.numeroFuncionario})`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label htmlFor="disciplinaId">Disciplina *</Label>
+                  <Select value={formData.disciplinaId} onValueChange={(value) => handleInputChange('disciplinaId', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a disciplina" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {disciplinas.map(disc => (
+                        <SelectItem key={disc.codigo} value={disc.codigo.toString()}>
+                          {disc.designacao}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="cursoId">Curso *</Label>
+                  <Select value={formData.cursoId} onValueChange={(value) => handleInputChange('cursoId', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o curso" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cursos.map(curso => (
+                        <SelectItem key={curso.codigo} value={curso.codigo.toString()}>
+                          {curso.designacao}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="anoLectivo">Ano Letivo *</Label>
+                  <Select value={formData.anoLectivo} onValueChange={(value) => handleInputChange('anoLectivo', value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="2023/2024">2023/2024</SelectItem>
+                      <SelectItem value="2024/2025">2024/2025</SelectItem>
+                      <SelectItem value="2025/2026">2025/2026</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="md:col-span-2">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="incluirTurma"
+                      checked={formData.incluirTurma}
+                      onChange={(e) => handleInputChange('incluirTurma', e.target.checked)}
+                      className="rounded"
+                    />
+                    <Label htmlFor="incluirTurma">Incluir atribuição de turma específica</Label>
+                  </div>
+                </div>
+
+                {formData.incluirTurma && (
+                  <div className="md:col-span-2">
+                    <Label htmlFor="turmaId">Turma</Label>
+                    <Select value={formData.turmaId} onValueChange={(value) => handleInputChange('turmaId', value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a turma" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {turmas.map(turma => (
+                          <SelectItem key={turma.codigo} value={turma.codigo.toString()}>
+                            {turma.designacao} {turma.tb_classes?.designacao && `- ${turma.tb_classes.designacao}`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button type="button" variant="outline" onClick={() => setShowModal(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Criar Atribuição
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </Container>
+  );
+}

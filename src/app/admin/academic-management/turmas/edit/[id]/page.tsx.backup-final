@@ -1,0 +1,595 @@
+"use client";
+
+import React, { useCallback, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { School, ArrowLeft, Save, X, Loader2, GraduationCap } from 'lucide-react';
+import { useTurma, useUpdateTurma } from '@/hooks/useTurma';
+import { useClasses } from '@/hooks/useClass';
+import { useCourses } from '@/hooks/useCourse';
+import { useSalas } from '@/hooks/useSala';
+import { usePeriodos } from '@/hooks/usePeriodo';
+import { useAnosLectivos } from '@/hooks/useAnoLectivo';
+import { ITurmaInput } from '@/types/turma.types';
+
+import * as yup from "yup";
+import { yupResolver } from '@hookform/resolvers/yup';
+import { useForm, Controller } from 'react-hook-form';
+
+// Schema de validação com Yup
+const turmaSchema = yup.object().shape({
+  designacao: yup
+    .string()
+    .required("Designação da turma é obrigatória")
+    .min(3, "Designação deve ter pelo menos 3 caracteres"),
+  codigo_Classe: yup
+    .number()
+    .required("Classe é obrigatória")
+    .positive("Classe deve ser selecionada")
+    .integer(),
+  codigo_Curso: yup
+    .number()
+    .required("Curso é obrigatório")
+    .positive("Curso deve ser selecionado")
+    .integer(),
+  codigo_Sala: yup
+    .number()
+    .required("Sala é obrigatória")
+    .positive("Sala deve ser selecionada")
+    .integer(),
+  codigo_Periodo: yup
+    .number()
+    .required("Período é obrigatório")
+    .positive("Período deve ser selecionado")
+    .integer(),
+  codigo_AnoLectivo: yup
+    .number()
+    .optional()
+    .positive()
+    .integer(),
+  max_Alunos: yup
+    .number()
+    .optional()
+    .positive("Capacidade deve ser maior que zero")
+    .integer()
+    .min(1, "Capacidade mínima é 1")
+    .max(50, "Capacidade máxima é 50"),
+  status: yup
+    .string()
+    .optional()
+    .oneOf(['Ativo', 'Inativo', 'Planejado'], "Status inválido"),
+});
+
+export default function EditTurmaPage() {
+  const params = useParams();
+  const router = useRouter();
+  const turmaId = parseInt(params.id as string);
+
+  // Hooks da API
+  const { turma, isLoading: turmaLoading, error: turmaError } = useTurma(turmaId);
+  const { updateTurma, isLoading: updateLoading } = useUpdateTurma();
+  const { classes, fetchClasses, isLoading: classesLoading, error: classesError } = useClasses();
+  const { courses, loading: coursesLoading, error: coursesError, refetch: fetchCourses } = useCourses();
+  const { salas, fetchSalas, isLoading: salasLoading, error: salasError } = useSalas();
+  const { periodos, fetchPeriodos, isLoading: periodosLoading, error: periodosError } = usePeriodos();
+  const { anosLectivos, fetchAnosLectivos, isLoading: anosLoading, error: anosError } = useAnosLectivos();
+
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm<ITurmaInput>({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: yupResolver(turmaSchema) as any,
+    defaultValues: {
+      designacao: '',
+      codigo_Classe: 0,
+      codigo_Curso: 0,
+      codigo_Sala: 0,
+      codigo_Periodo: 0,
+      codigo_AnoLectivo: 1,
+      max_Alunos: 30,
+      status: 'Ativo',
+    },
+  });
+
+  // Carregar dados iniciais dos selects
+  useEffect(() => {
+    fetchClasses(1, 100);
+    fetchCourses();
+    fetchSalas(1, 100);
+    fetchPeriodos(1, 100);
+    fetchAnosLectivos(1, 100);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Carregar dados da turma quando disponível
+  useEffect(() => {
+    if (turma) {
+      reset({
+        designacao: turma.designacao || '',
+        codigo_Classe: turma.codigo_Classe || 0,
+        codigo_Curso: turma.codigo_Curso || 0,
+        codigo_Sala: turma.codigo_Sala || 0,
+        codigo_Periodo: turma.codigo_Periodo || 0,
+        codigo_AnoLectivo: turma.codigo_AnoLectivo || 1,
+        max_Alunos: turma.max_Alunos || 30,
+        status: turma.status || 'Ativo',
+      });
+    }
+  }, [turma, reset]);
+
+  const handleCancel = useCallback(() => {
+    router.back();
+  };
+
+  const onSubmit = async (data: ITurmaInput) => {
+    try {
+      await updateTurma(turmaId, data);
+      router.push('/admin/academic-management/turmas');
+    } catch (error) {
+      console.error('Erro ao atualizar turma:', error);
+    }
+  };
+
+  // Estados de loading
+  const isDataLoading = turmaLoading || classesLoading || coursesLoading || salasLoading || periodosLoading || anosLoading;
+
+  if (isDataLoading) {
+    return (
+      <div className="space-y-6 ultra-fast-fade">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-[#3B6C4D] loading-spinner" />
+            <p className="text-muted-foreground">Carregando dados da turma...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (turmaError) {
+    return (
+      <div className="space-y-6 ultra-fast-fade">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="text-red-500 mb-4">
+              <svg className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.728-.833-2.498 0L4.316 18.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Erro ao carregar turma</h3>
+            <p className="text-muted-foreground mb-4">{turmaError}</p>
+            <Button onClick={() => router.back()} variant="outline">
+              Voltar
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 ultra-fast-fade">
+      {/* Header Fixo */}
+      <div className="bg-background border-b shadow-sm mb-8 rounded-2xl">
+        <div className="px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCancel}
+                className="flex items-center"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Voltar
+              </Button>
+              <div className="h-6 w-px bg-border"></div>
+              <div>
+                <h1 className="text-2xl font-bold text-foreground">Editar Turma</h1>
+                <p className="text-sm text-muted-foreground">
+                  Atualize as informações da turma
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleCancel}
+                disabled={updateLoading}
+              >
+                <X className="w-4 h-4 mr-2" />
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                form="turma-form"
+                disabled={updateLoading}
+                className="bg-[#3B6C4D] hover:bg-[#8B4513]"
+              >
+                {updateLoading ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin loading-spinner" />
+                ) : (
+                  <Save className="w-4 h-4 mr-2" />
+                )}
+                Salvar Alterações
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Formulário */}
+      <div className="space-y-8 ultra-fast-fade">
+        <form id="turma-form" onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+
+          {/* Informações Básicas */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center text-xl">
+                <School className="w-6 h-6 mr-3 text-blue-500" />
+                Informações Básicas
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="space-y-2 ultra-fast-fade">
+                  <Label htmlFor="designacao" className="text-foreground font-semibold">
+                    Designação da Turma *
+                  </Label>
+                  <Controller
+                    name="designacao"
+                    control={control}
+                    render={({ field }) => (
+                      <Input
+                        {...field}
+                        id="designacao"
+                        placeholder="Ex: IG-10A-2024, CG-11B-2024..."
+                        className={`h-12 ${errors.designacao ? 'border-red-500' : ''}`}
+                      />
+                    )}
+                  />
+                  {errors.designacao && (
+                    <p className="text-sm text-red-500">{errors.designacao.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2 ultra-fast-fade">
+                  <Label htmlFor="classe" className="text-foreground font-semibold">
+                    Classe *
+                  </Label>
+                  <Controller
+                    name="codigo_Classe"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value.toString()}
+                        onValueChange={(value) => field.onChange(parseInt(value))}
+                        disabled={classesLoading}
+                      >
+                        <SelectTrigger className={`h-12 ${errors.codigo_Classe ? 'border-red-500' : ''}`}>
+                          {classesLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin loading-spinner" />}
+                          <SelectValue placeholder={classesLoading ? "Carregando classes..." : "Selecione a classe"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {classesLoading ? (
+                            <SelectItem value="loading" disabled>
+                              Carregando classes...
+                            </SelectItem>
+                          ) : classesError ? (
+                            <SelectItem value="error" disabled>
+                              Erro ao carregar classes
+                            </SelectItem>
+                          ) : classes.length > 0 ? (
+                            classes.map((classe) => (
+                              <SelectItem key={classe.codigo} value={classe.codigo.toString()}>
+                                {classe.designacao}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="empty" disabled>
+                              Nenhuma classe encontrada
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {errors.codigo_Classe && (
+                    <p className="text-sm text-red-500">{errors.codigo_Classe.message}</p>
+                  )}
+                  {classesError && (
+                    <p className="text-sm text-red-500">Erro ao carregar classes: {classesError}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2 ultra-fast-fade">
+                  <Label htmlFor="curso" className="text-foreground font-semibold">
+                    Curso *
+                  </Label>
+                  <Controller
+                    name="codigo_Curso"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value.toString()}
+                        onValueChange={(value) => field.onChange(parseInt(value))}
+                        disabled={coursesLoading}
+                      >
+                        <SelectTrigger className={`h-12 ${errors.codigo_Curso ? 'border-red-500' : ''}`}>
+                          {coursesLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin loading-spinner" />}
+                          <SelectValue placeholder={coursesLoading ? "Carregando cursos..." : "Selecione o curso"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {coursesLoading ? (
+                            <SelectItem value="loading" disabled>
+                              Carregando cursos...
+                            </SelectItem>
+                          ) : coursesError ? (
+                            <SelectItem value="error" disabled>
+                              Erro ao carregar cursos
+                            </SelectItem>
+                          ) : courses.length > 0 ? (
+                            courses.map((curso) => (
+                              <SelectItem key={curso.codigo} value={curso.codigo.toString()}>
+                                {curso.designacao}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="empty" disabled>
+                              Nenhum curso encontrado
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {errors.codigo_Curso && (
+                    <p className="text-sm text-red-500">{errors.codigo_Curso.message}</p>
+                  )}
+                  {coursesError && (
+                    <p className="text-sm text-red-500">Erro ao carregar cursos: {coursesError}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2 ultra-fast-fade">
+                  <Label htmlFor="capacidade" className="text-foreground font-semibold">
+                    Capacidade Máxima *
+                  </Label>
+                  <Controller
+                    name="max_Alunos"
+                    control={control}
+                    render={({ field }) => (
+                      <Input
+                        {...field}
+                        id="capacidade"
+                        type="number"
+                        min="1"
+                        max="50"
+                        placeholder="Ex: 30"
+                        className={`h-12 ${errors.max_Alunos ? 'border-red-500' : ''}`}
+                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                      />
+                    )}
+                  />
+                  {errors.max_Alunos && (
+                    <p className="text-sm text-red-500">{errors.max_Alunos.message}</p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Configuração Acadêmica */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center text-xl">
+                <GraduationCap className="w-6 h-6 mr-3 text-purple-500" />
+                Configuração Acadêmica
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="space-y-2 ultra-fast-fade">
+                  <Label htmlFor="sala" className="text-foreground font-semibold">
+                    Sala *
+                  </Label>
+                  <Controller
+                    name="codigo_Sala"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value.toString()}
+                        onValueChange={(value) => field.onChange(parseInt(value))}
+                        disabled={salasLoading}
+                      >
+                        <SelectTrigger className={`h-12 ${errors.codigo_Sala ? 'border-red-500' : ''}`}>
+                          {salasLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin loading-spinner" />}
+                          <SelectValue placeholder={salasLoading ? "Carregando salas..." : "Selecione a sala"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {salasLoading ? (
+                            <SelectItem value="loading" disabled>
+                              Carregando salas...
+                            </SelectItem>
+                          ) : salasError ? (
+                            <SelectItem value="error" disabled>
+                              Erro ao carregar salas
+                            </SelectItem>
+                          ) : salas.length > 0 ? (
+                            salas.map((sala) => (
+                              <SelectItem key={sala.codigo} value={sala.codigo.toString()}>
+                                {sala.designacao}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="empty" disabled>
+                              Nenhuma sala encontrada
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {errors.codigo_Sala && (
+                    <p className="text-sm text-red-500">{errors.codigo_Sala.message}</p>
+                  )}
+                  {salasError && (
+                    <p className="text-sm text-red-500">Erro ao carregar salas: {salasError}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2 ultra-fast-fade">
+                  <Label htmlFor="periodo" className="text-foreground font-semibold">
+                    Período *
+                  </Label>
+                  <Controller
+                    name="codigo_Periodo"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value.toString()}
+                        onValueChange={(value) => field.onChange(parseInt(value))}
+                        disabled={periodosLoading}
+                      >
+                        <SelectTrigger className={`h-12 ${errors.codigo_Periodo ? 'border-red-500' : ''}`}>
+                          {periodosLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin loading-spinner" />}
+                          <SelectValue placeholder={periodosLoading ? "Carregando períodos..." : "Selecione o período"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {periodosLoading ? (
+                            <SelectItem value="loading" disabled>
+                              Carregando períodos...
+                            </SelectItem>
+                          ) : periodosError ? (
+                            <SelectItem value="error" disabled>
+                              Erro ao carregar períodos
+                            </SelectItem>
+                          ) : periodos.length > 0 ? (
+                            periodos.map((periodo) => (
+                              <SelectItem key={periodo.codigo} value={periodo.codigo.toString()}>
+                                {periodo.designacao}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="empty" disabled>
+                              Nenhum período encontrado
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {errors.codigo_Periodo && (
+                    <p className="text-sm text-red-500">{errors.codigo_Periodo.message}</p>
+                  )}
+                  {periodosError && (
+                    <p className="text-sm text-red-500">Erro ao carregar períodos: {periodosError}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2 ultra-fast-fade">
+                  <Label htmlFor="anoLetivo" className="text-foreground font-semibold">
+                    Ano Letivo *
+                  </Label>
+                  <Controller
+                    name="codigo_AnoLectivo"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value?.toString() || '1'}
+                        onValueChange={(value) => field.onChange(parseInt(value))}
+                        disabled={anosLoading}
+                      >
+                        <SelectTrigger className="h-12">
+                          {anosLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin loading-spinner" />}
+                          <SelectValue placeholder={anosLoading ? "Carregando anos letivos..." : "Selecione o ano letivo"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {anosLoading ? (
+                            <SelectItem value="loading" disabled>
+                              Carregando anos letivos...
+                            </SelectItem>
+                          ) : anosError ? (
+                            <SelectItem value="error" disabled>
+                              Erro ao carregar anos letivos
+                            </SelectItem>
+                          ) : anosLectivos.length > 0 ? (
+                            anosLectivos.map((ano) => (
+                              <SelectItem key={ano.codigo} value={ano.codigo.toString()}>
+                                {ano.designacao}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="empty" disabled>
+                              Nenhum ano letivo encontrado
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {errors.codigo_AnoLectivo && (
+                    <p className="text-sm text-red-500">{errors.codigo_AnoLectivo.message}</p>
+                  )}
+                  {anosError && (
+                    <p className="text-sm text-red-500">Erro ao carregar anos letivos: {anosError}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
+                <div className="space-y-2 ultra-fast-fade">
+                  <Label htmlFor="status" className="text-foreground font-semibold">
+                    Status
+                  </Label>
+                  <Controller
+                    name="status"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value || 'Ativo'}
+                        onValueChange={field.onChange}
+                      >
+                        <SelectTrigger className="h-12">
+                          <SelectValue placeholder="Selecione o status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Ativo">Ativo</SelectItem>
+                          <SelectItem value="Inativo">Inativo</SelectItem>
+                          <SelectItem value="Planejado">Planejado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {errors.status && (
+                    <p className="text-sm text-red-500">{errors.status.message}</p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+        </form>
+      </div>
+    </div>
+  );
+}

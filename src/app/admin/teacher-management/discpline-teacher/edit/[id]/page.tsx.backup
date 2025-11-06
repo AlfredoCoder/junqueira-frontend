@@ -1,0 +1,524 @@
+"use client";
+
+import React, { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import Container from '@/components/layout/Container';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  ArrowLeft,
+  Save,
+  BookOpen,
+  User,
+  Clock,
+  Calendar,
+  Loader2,
+} from 'lucide-react';
+
+interface DisciplineTeacherFormData {
+  professor: string;
+  disciplina: string;
+  turma: string;
+  sala: string;
+  periodo: string;
+  cargaHoraria: number;
+  diasSemana: string[];
+  horarioInicio: string;
+  horarioFim: string;
+  anoLetivo: string;
+  status: string;
+  dataInicio: string;
+  observacoes: string;
+}
+
+export default function EditDisciplineTeacher() {
+  const params = useParams();
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [formData, setFormData] = useState<DisciplineTeacherFormData>({
+    professor: '',
+    disciplina: '',
+    turma: '',
+    sala: '',
+    periodo: '',
+    cargaHoraria: 0,
+    diasSemana: [],
+    horarioInicio: '',
+    horarioFim: '',
+    anoLetivo: '',
+    status: '',
+    dataInicio: '',
+    observacoes: ''
+  });
+
+  // Dados mockados para selects
+  const professoresData = [
+    { id: "1", nome: "Prof. Maria Silva Santos", especialidade: "Matemática", email: "maria.santos@Complexo Abilio Junqueira.edu.ao" },
+    { id: "2", nome: "Prof. João Manuel Costa", especialidade: "Português", email: "joao.costa@Complexo Abilio Junqueira.edu.ao" },
+    { id: "3", nome: "Prof. Ana Paula Francisco", especialidade: "Inglês", email: "ana.francisco@Complexo Abilio Junqueira.edu.ao" },
+    { id: "4", nome: "Prof. Carlos Alberto Neto", especialidade: "Física", email: "carlos.neto@Complexo Abilio Junqueira.edu.ao" },
+    { id: "5", nome: "Prof. Beatriz Santos Silva", especialidade: "Química", email: "beatriz.silva@Complexo Abilio Junqueira.edu.ao" }
+  ];
+
+  const disciplinasData = [
+    { id: "1", nome: "Matemática", codigo: "MAT", cargaHoraria: 6 },
+    { id: "2", nome: "Português", codigo: "PORT", cargaHoraria: 5 },
+    { id: "3", nome: "Inglês", codigo: "ING", cargaHoraria: 3 },
+    { id: "4", nome: "Física", codigo: "FIS", cargaHoraria: 4 },
+    { id: "5", nome: "Química", codigo: "QUI", cargaHoraria: 4 },
+    { id: "6", nome: "Biologia", codigo: "BIO", cargaHoraria: 3 },
+    { id: "7", nome: "História", codigo: "HIST", cargaHoraria: 3 },
+    { id: "8", nome: "Geografia", codigo: "GEO", cargaHoraria: 3 },
+    { id: "9", nome: "Informática", codigo: "INFO", cargaHoraria: 4 },
+    { id: "10", nome: "Educação Física", codigo: "EDF", cargaHoraria: 2 }
+  ];
+
+  const turmasData = [
+    { id: "1", designacao: "IG-10A-2024", classe: "10ª Classe", curso: "Informática de Gestão" },
+    { id: "2", designacao: "CG-11B-2024", classe: "11ª Classe", curso: "Contabilidade e Gestão" },
+    { id: "3", designacao: "AG-12A-2024", classe: "12ª Classe", curso: "Administração e Gestão" },
+    { id: "4", designacao: "EC-11A-2024", classe: "11ª Classe", curso: "Economia" },
+    { id: "5", designacao: "IG-11C-2024", classe: "11ª Classe", curso: "Informática de Gestão" },
+    { id: "6", designacao: "CG-10B-2024", classe: "10ª Classe", curso: "Contabilidade e Gestão" }
+  ];
+
+  const salasData = ["A1", "A2", "A3", "B1", "B2", "B3", "C1", "C2", "Lab. Info", "Lab. Física"];
+  const periodosData = ["Manhã", "Tarde", "Noite"];
+  const statusData = ["Ativo", "Inativo", "Suspenso"];
+  const anosLetivosData = ["2024/2025", "2025/2026"];
+  
+  const diasSemanaData = [
+    { id: "segunda", label: "Segunda-feira" },
+    { id: "terca", label: "Terça-feira" },
+    { id: "quarta", label: "Quarta-feira" },
+    { id: "quinta", label: "Quinta-feira" },
+    { id: "sexta", label: "Sexta-feira" },
+    { id: "sabado", label: "Sábado" }
+  ];
+
+  // Dados mockados das atribuições existentes
+  const assignmentsData = [
+    {
+      id: 1,
+      professor: "Prof. Maria Silva Santos",
+      disciplina: "Matemática",
+      turma: "IG-10A-2024",
+      sala: "A1",
+      periodo: "Manhã",
+      cargaHoraria: 6,
+      diasSemana: ["segunda", "terca", "quinta"],
+      horarioInicio: "07:30",
+      horarioFim: "09:00",
+      anoLetivo: "2024/2025",
+      status: "Ativo",
+      dataInicio: "2024-02-15",
+      observacoes: "Turma com bom desempenho em matemática"
+    },
+    {
+      id: 2,
+      professor: "Prof. João Manuel Costa",
+      disciplina: "Português",
+      turma: "CG-11B-2024",
+      sala: "B2",
+      periodo: "Tarde",
+      cargaHoraria: 5,
+      diasSemana: ["segunda", "quarta", "sexta"],
+      horarioInicio: "13:30",
+      horarioFim: "15:00",
+      anoLetivo: "2024/2025",
+      status: "Ativo",
+      dataInicio: "2024-01-20",
+      observacoes: "Foco em literatura angolana"
+    }
+  ];
+
+  useEffect(() => {
+    const loadAssignment = async () => {
+      setIsLoading(true);
+      // Simular carregamento
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const assignmentId = parseInt(params.id as string);
+      const assignment = assignmentsData.find(a => a.id === assignmentId);
+      
+      if (assignment) {
+        setFormData({
+          professor: assignment.professor,
+          disciplina: assignment.disciplina,
+          turma: assignment.turma,
+          sala: assignment.sala,
+          periodo: assignment.periodo,
+          cargaHoraria: assignment.cargaHoraria,
+          diasSemana: assignment.diasSemana,
+          horarioInicio: assignment.horarioInicio,
+          horarioFim: assignment.horarioFim,
+          anoLetivo: assignment.anoLetivo,
+          status: assignment.status,
+          dataInicio: assignment.dataInicio,
+          observacoes: assignment.observacoes
+        });
+      }
+      
+      setIsLoading(false);
+    };
+
+    loadAssignment();
+  }, [params.id]);
+
+  const handleInputChange = (field: keyof DisciplineTeacherFormData, value: string | number | string[]) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleDisciplinaChange = (disciplinaNome: string) => {
+    const disciplina = disciplinasData.find(d => d.nome === disciplinaNome);
+    if (disciplina) {
+      setFormData(prev => ({
+        ...prev,
+        disciplina: disciplina.nome,
+        cargaHoraria: disciplina.cargaHoraria
+      }));
+    }
+  };
+
+  const handleDiaSemanaChange = (dia: string, checked: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      diasSemana: checked 
+        ? [...prev.diasSemana, dia]
+        : prev.diasSemana.filter(d => d !== dia)
+    }));
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    
+    // Simular salvamento
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    console.log('Atribuição atualizada:', formData);
+    
+    setIsSaving(false);
+    router.push(`/admin/teacher-management/discpline-teacher/details/${params.id}`);
+  };
+
+  const handleCancel = () => {
+    router.back();
+  };
+
+  if (isLoading) {
+    return (
+      <Container>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#F9CD1D] mx-auto mb-4"></div>
+            <p className="text-gray-600">Carregando dados da atribuição...</p>
+          </div>
+        </div>
+      </Container>
+    );
+  }
+
+  return (
+    <Container>
+      {/* Header Fixo */}
+      <div className="sticky top-0 z-50 bg-white border-b border-gray-200 -mx-6 px-6 py-4 mb-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCancel}
+              className="hover:bg-gray-100"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Cancelar
+            </Button>
+            <div className="h-6 w-px bg-gray-300"></div>
+            <div>
+              <h1 className="text-xl font-semibold text-gray-900">
+                Editar Atribuição de Disciplina
+              </h1>
+              <p className="text-sm text-gray-600">
+                Atualize as informações da atribuição
+              </p>
+            </div>
+          </div>
+          <Button 
+            onClick={handleSave}
+            disabled={isSaving}
+            className="bg-[#F9CD1D] hover:bg-[#F9CD1D]/90 text-white"
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Salvando...
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4 mr-2" />
+                Salvar Alterações
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+
+      <div className="max-w-4xl mx-auto space-y-8">
+        {/* Informações Básicas */}
+        <Card className="border-l-4 border-l-blue-500">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <User className="h-5 w-5 text-blue-600" />
+              <span>Informações Básicas</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="professor">Professor *</Label>
+                <Select value={formData.professor} onValueChange={(value) => handleInputChange('professor', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o professor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {professoresData.map((professor) => (
+                      <SelectItem key={professor.id} value={professor.nome}>
+                        <div>
+                          <p className="font-medium">{professor.nome}</p>
+                          <p className="text-sm text-gray-500">{professor.especialidade}</p>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="disciplina">Disciplina *</Label>
+                <Select value={formData.disciplina} onValueChange={handleDisciplinaChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a disciplina" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {disciplinasData.map((disciplina) => (
+                      <SelectItem key={disciplina.id} value={disciplina.nome}>
+                        <div>
+                          <p className="font-medium">{disciplina.nome}</p>
+                          <p className="text-sm text-gray-500">{disciplina.codigo} - {disciplina.cargaHoraria}h/semana</p>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="turma">Turma *</Label>
+                <Select value={formData.turma} onValueChange={(value) => handleInputChange('turma', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a turma" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {turmasData.map((turma) => (
+                      <SelectItem key={turma.id} value={turma.designacao}>
+                        <div>
+                          <p className="font-medium">{turma.designacao}</p>
+                          <p className="text-sm text-gray-500">{turma.classe} - {turma.curso}</p>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="cargaHoraria">Carga Horária (h/semana)</Label>
+                <Input
+                  id="cargaHoraria"
+                  type="number"
+                  value={formData.cargaHoraria}
+                  onChange={(e) => handleInputChange('cargaHoraria', parseInt(e.target.value))}
+                  placeholder="4"
+                  min="1"
+                  max="10"
+                  readOnly
+                  className="bg-gray-50"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Configuração de Horário */}
+        <Card className="border-l-4 border-l-green-500">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Clock className="h-5 w-5 text-green-600" />
+              <span>Configuração de Horário</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="sala">Sala *</Label>
+                <Select value={formData.sala} onValueChange={(value) => handleInputChange('sala', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a sala" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {salasData.map((sala) => (
+                      <SelectItem key={sala} value={sala}>
+                        {sala}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="periodo">Período *</Label>
+                <Select value={formData.periodo} onValueChange={(value) => handleInputChange('periodo', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o período" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {periodosData.map((periodo) => (
+                      <SelectItem key={periodo} value={periodo}>
+                        {periodo}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="anoLetivo">Ano Letivo</Label>
+                <Select value={formData.anoLetivo} onValueChange={(value) => handleInputChange('anoLetivo', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o ano letivo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {anosLetivosData.map((ano) => (
+                      <SelectItem key={ano} value={ano}>
+                        {ano}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="horarioInicio">Horário de Início</Label>
+                <Input
+                  id="horarioInicio"
+                  type="time"
+                  value={formData.horarioInicio}
+                  onChange={(e) => handleInputChange('horarioInicio', e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="horarioFim">Horário de Fim</Label>
+                <Input
+                  id="horarioFim"
+                  type="time"
+                  value={formData.horarioFim}
+                  onChange={(e) => handleInputChange('horarioFim', e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <Label>Dias da Semana *</Label>
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                {diasSemanaData.map((dia) => (
+                  <div key={dia.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={dia.id}
+                      checked={formData.diasSemana.includes(dia.id)}
+                      onCheckedChange={(checked) => handleDiaSemanaChange(dia.id, checked as boolean)}
+                    />
+                    <Label htmlFor={dia.id} className="text-sm font-normal">
+                      {dia.label}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Configurações Adicionais */}
+        <Card className="border-l-4 border-l-purple-500">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Calendar className="h-5 w-5 text-purple-600" />
+              <span>Configurações Adicionais</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="dataInicio">Data de Início</Label>
+                <Input
+                  id="dataInicio"
+                  type="date"
+                  value={formData.dataInicio}
+                  onChange={(e) => handleInputChange('dataInicio', e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {statusData.map((status) => (
+                      <SelectItem key={status} value={status}>
+                        {status}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="observacoes">Observações</Label>
+              <textarea
+                id="observacoes"
+                value={formData.observacoes}
+                onChange={(e) => handleInputChange('observacoes', e.target.value)}
+                placeholder="Observações adicionais sobre a atribuição..."
+                className="w-full min-h-[100px] px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F9CD1D] focus:border-transparent resize-vertical"
+              />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </Container>
+  );
+}

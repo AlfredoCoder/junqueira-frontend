@@ -1,0 +1,570 @@
+"use client";
+
+import React, { useCallback, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  ArrowRightLeft,
+  ArrowLeft,
+  Save,
+  Loader2,
+  GraduationCap,
+  Search,
+  AlertCircle,
+  X,
+} from 'lucide-react';
+import { useCreateTransfer } from '@/hooks/useTransfer';
+import { useStudent } from '@/hooks/useStudent';
+import { ITransferInput } from '@/types/transfer.types';
+
+// Interface para o formulário (inclui campos adicionais da UI)
+interface ITransferFormData extends Partial<ITransferInput> {
+  escolaDestino?: string
+  motivoTransferencia?: string
+  status?: string
+}
+
+// Dados estruturados do sistema (baseados na realidade angolana)
+const TRANSFER_MOTIVOS = [
+  { codigo: 1, designacao: "Mudança de residência" },
+  { codigo: 2, designacao: "Mudança de curso" },
+  { codigo: 3, designacao: "Problemas disciplinares" },
+  { codigo: 4, designacao: "Motivos familiares" },
+  { codigo: 5, designacao: "Transferência administrativa" },
+  { codigo: 6, designacao: "Transferência por trabalho dos pais" },
+  { codigo: 7, designacao: "Problemas de saúde" },
+  { codigo: 8, designacao: "Outros motivos" },
+];
+
+const ESCOLAS_DESTINO = [
+  { codigo: 1, nome: "Escola Secundária do Cazenga", provincia: "Luanda" },
+  { codigo: 2, nome: "Instituto Médio Politécnico de Luanda", provincia: "Luanda" },
+  { codigo: 3, nome: "Colégio São José", provincia: "Luanda" },
+  { codigo: 4, nome: "Escola Secundária da Maianga", provincia: "Luanda" },
+  { codigo: 5, nome: "Instituto Médio Industrial de Luanda", provincia: "Luanda" },
+  { codigo: 6, nome: "Escola Secundária de Viana", provincia: "Luanda" },
+  { codigo: 7, nome: "Instituto Médio de Economia", provincia: "Luanda" },
+  { codigo: 8, nome: "Escola Secundária do Sambizanga", provincia: "Luanda" },
+];
+
+export default function AddTransferPage() {
+  const router = useRouter();
+  const [studentSearch, setStudentSearch] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState<ITransferFormData>({
+    codigoAluno: 0,
+    codigoEscola: 0,
+    dataTransferencia: new Date().toISOString().split('T')[0],
+    codigoMotivo: 0,
+    obs: '',
+    escolaDestino: '',
+    motivoTransferencia: '',
+    status: 'Pendente'
+  });
+
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Hooks da API
+  const { createTransfer, loading: createLoading, error } = useCreateTransfer();
+  const { students, getAllStudents, loading: studentsLoading } = useStudent();
+
+  // Carregar alunos ao montar o componente
+  React.useEffect(() => {
+    getAllStudents(1, 100); // Carregar até 100 alunos para o select
+  }, [getAllStudents]);
+
+  // Filtrar alunos baseado na busca (usando dados da API)
+  const filteredStudents = React.useMemo(() => {
+    if (!students || students.length === 0) return [];
+    
+    if (studentSearch && studentSearch.trim().length >= 2) { // Mínimo 2 caracteres
+      const searchTerm = studentSearch.toLowerCase().trim();
+      return students.filter(student => {
+        const nome = student.nome?.toLowerCase() || '';
+        const email = student.email?.toLowerCase() || '';
+        const codigo = student.codigo?.toString() || '';
+        
+        return nome.includes(searchTerm) || 
+               email.includes(searchTerm) || 
+               codigo.includes(searchTerm);
+      });
+    }
+    return students;
+  }, [students, studentSearch]);
+
+  const handleInputChange = useCallback((field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    
+    // Limpar erro quando o usuário começar a digitar
+    if (errors[field]) {
+      setErrors(prev => ({
+        ...prev,
+        [field]: ""
+      }));
+    }
+  }, []);
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    // Validações obrigatórias
+    if (!formData.codigoAluno || formData.codigoAluno === 0) newErrors.codigoAluno = "Aluno é obrigatório";
+    if (!formData.dataTransferencia) newErrors.dataTransferencia = "Data de transferência é obrigatória";
+    if (!formData.escolaDestino) newErrors.escolaDestino = "Escola destino é obrigatória";
+    if (!formData.motivoTransferencia) newErrors.motivoTransferencia = "Motivo da transferência é obrigatório";
+
+    // Validar se a data não é futura
+    if (formData.dataTransferencia) {
+      const today = new Date();
+      const transferDate = new Date(formData.dataTransferencia);
+      if (transferDate > today) {
+        newErrors.dataTransferencia = "Data de transferência não pode ser futura";
+      }
+    }
+
+    // Validar escola destino
+    if (formData.escolaDestino && !ESCOLAS_DESTINO.find(escola => escola.nome === formData.escolaDestino)) {
+      newErrors.escolaDestino = "Selecione uma escola válida da lista";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  }, []);
+
+  const handleSubmit = async () => {
+    if (!validateForm()) return;
+
+    setIsLoading(true);
+    
+    try {
+      // Mapear escola destino para código
+      const selectedSchoolCode = ESCOLAS_DESTINO.find(school => 
+        school.nome === formData.escolaDestino
+      )?.codigo || 1;
+
+      // Mapear motivo para código
+      const selectedMotivoCode = TRANSFER_MOTIVOS.find(motivo => 
+        motivo.designacao === formData.motivoTransferencia
+      )?.codigo || 1;
+
+      // Preparar dados para a API conforme estrutura esperada
+      const transferData: ITransferInput = {
+        codigoAluno: Number(formData.codigoAluno),
+        codigoEscola: selectedSchoolCode,
+        dataTransferencia: formData.dataTransferencia ? 
+          new Date(formData.dataTransferencia + 'T10:00:00.000Z').toISOString() : 
+          new Date().toISOString(),
+        codigoMotivo: selectedMotivoCode,
+        obs: formData.obs || ''
+      }, []);
+      
+      // Usar hook da API real
+      await createTransfer(transferData);
+      
+      console.log("Dados da transferência:", transferData);
+      
+      // Redirecionar para lista após sucesso
+      router.push('/admin/student-management/transfers');
+    } catch (error) {
+      console.error("Erro ao salvar transferência:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Encontrar aluno selecionado
+  const currentSelectedStudent = students?.find(student => student.codigo.toString() === formData.codigoAluno?.toString());
+
+  const calculateAge = (birthDate: string) => {
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
+  }, []);
+
+  return (
+    <div className="space-y-6 ultra-fast-fade">
+      {/* Header */}
+      <div className="relative overflow-hidden rounded-2xl bg-white border border-gray-200 p-8 mb-8 shadow-sm">
+        <div className="relative z-10">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-6 lg:space-y-0 ultra-fast-fade">
+            <div className="space-y-3 ultra-fast-fade">
+              <div className="flex items-center space-x-4">
+                <Button
+                  variant="outline"
+                  onClick={() => router.back()}
+                  className="border-gray-300 bg-white text-gray-600 hover:bg-gray-50"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Voltar
+                </Button>
+                <div className="h-16 w-16 bg-[#F9CD1D] rounded-2xl flex items-center justify-center shadow-md">
+                  <ArrowRightLeft className="h-8 w-8 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-4xl font-bold text-gray-900">
+                    Nova Transferência
+                  </h1>
+                  <p className="text-[#F9CD1D] font-semibold text-lg">Transferir Aluno</p>
+                </div>
+              </div>
+              <p className="text-gray-600 text-sm max-w-2xl">
+                Preencha as informações necessárias para processar a transferência de um aluno.
+                Todos os campos marcados com * são obrigatórios.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                variant="outline"
+                onClick={() => router.back()}
+                className="border-gray-300 bg-white text-gray-600 hover:bg-gray-50 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
+              >
+                Cancelar
+              </Button>
+
+              <Button
+                onClick={handleSubmit}
+                disabled={isLoading}
+                className="bg-[#F9CD1D] hover:bg-[#F9CD1D] text-white border-0 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
+              >
+                <Save className="w-5 h-5 mr-2" />
+                {isLoading ? "Salvando..." : "Salvar Transferência"}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Decorative elements */}
+        <div className="absolute -top-16 -right-16 w-32 h-32 bg-[#D2B48C]/5 rounded-full"></div>
+        <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-gray-100 rounded-full"></div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Formulário Principal */}
+        <div className="lg:col-span-2 space-y-6 ultra-fast-fade">
+          {/* Seleção do Aluno */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <GraduationCap className="h-5 w-5" />
+                <span>Selecionar Aluno</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2 ultra-fast-fade">
+                <label className="text-sm font-medium text-gray-700">
+                  Buscar Aluno *
+                </label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    placeholder="Digite o nome, email ou código do aluno..."
+                    value={studentSearch}
+                    onChange={(e) => setStudentSearch(e.target.value)}
+                    className="pl-10 pr-10"
+                  />
+                  {studentSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setStudentSearch('')}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                {studentSearch && (
+                  <p className="text-xs text-gray-500">
+                    {studentSearch.trim().length < 2 ? 
+                      'Digite pelo menos 2 caracteres para buscar' :
+                      `${filteredStudents.length} aluno(s) encontrado(s)`
+                    }
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2 ultra-fast-fade">
+                <label className="text-sm font-medium text-gray-700">
+                  Aluno *
+                </label>
+                <Select 
+                  value={formData.codigoAluno?.toString() || ''} 
+                  onValueChange={(value) => handleInputChange('codigoAluno', value)}
+                >
+                  <SelectTrigger className={errors.codigoAluno ? "border-red-500" : ""}>
+                    <SelectValue placeholder={studentsLoading ? "Carregando alunos..." : "Selecione o aluno"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {studentsLoading ? (
+                      <SelectItem value="loading" disabled>
+                        <div className="flex items-center">
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin loading-spinner" />
+                          Carregando alunos...
+                        </div>
+                      </SelectItem>
+                    ) : filteredStudents.length > 0 ? (
+                      filteredStudents.map((student) => (
+                        <SelectItem key={student.codigo} value={student.codigo.toString()}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{student.nome}</span>
+                            <span className="text-xs text-gray-500">
+                              {student.email || 'Email não informado'} • {student.dataNascimento ? calculateAge(student.dataNascimento) : 'N/A'} anos
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="no-students" disabled>
+                        {studentSearch ? 
+                          `Nenhum aluno encontrado para "${studentSearch}"` : 
+                          'Nenhum aluno disponível'
+                        }
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                {errors.codigoAluno && (
+                  <p className="text-sm text-red-500 flex items-center">
+                    <AlertCircle className="h-4 w-4 mr-1" />
+                    {errors.codigoAluno}
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Informações da Transferência */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <ArrowRightLeft className="h-5 w-5" />
+                <span>Informações da Transferência</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2 ultra-fast-fade">
+                  <label className="text-sm font-medium text-gray-700">
+                    Data de Transferência *
+                  </label>
+                  <Input
+                    type="date"
+                    value={formData.dataTransferencia}
+                    onChange={(e) => handleInputChange('dataTransferencia', e.target.value)}
+                    className={errors.dataTransferencia ? "border-red-500" : ""}
+                  />
+                  {errors.dataTransferencia && (
+                    <p className="text-sm text-red-500 flex items-center">
+                      <AlertCircle className="h-4 w-4 mr-1" />
+                      {errors.dataTransferencia}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2 ultra-fast-fade">
+                  <label className="text-sm font-medium text-gray-700">
+                    Status da Transferência
+                  </label>
+                  <Select 
+                    value={formData.status} 
+                    onValueChange={(value) => handleInputChange('status', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Pendente">Pendente</SelectItem>
+                      <SelectItem value="Aprovada">Aprovada</SelectItem>
+                      <SelectItem value="Rejeitada">Rejeitada</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="md:col-span-2 space-y-2 ultra-fast-fade">
+                  <label className="text-sm font-medium text-gray-700">
+                    Escola Destino *
+                  </label>
+                  <Select 
+                    value={formData.escolaDestino} 
+                    onValueChange={(value) => handleInputChange('escolaDestino', value)}
+                  >
+                    <SelectTrigger className={errors.escolaDestino ? "border-red-500" : ""}>
+                      <SelectValue placeholder="Selecione a escola destino" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ESCOLAS_DESTINO.map((escola) => (
+                        <SelectItem key={escola.codigo} value={escola.nome}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{escola.nome}</span>
+                            <span className="text-xs text-gray-500">{escola.provincia}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.escolaDestino && (
+                    <p className="text-sm text-red-500 flex items-center">
+                      <AlertCircle className="h-4 w-4 mr-1" />
+                      {errors.escolaDestino}
+                    </p>
+                  )}
+                </div>
+
+                <div className="md:col-span-2 space-y-2 ultra-fast-fade">
+                  <label className="text-sm font-medium text-gray-700">
+                    Motivo da Transferência *
+                  </label>
+                  <Select 
+                    value={formData.motivoTransferencia} 
+                    onValueChange={(value) => handleInputChange('motivoTransferencia', value)}
+                  >
+                    <SelectTrigger className={errors.motivoTransferencia ? "border-red-500" : ""}>
+                      <SelectValue placeholder="Selecione o motivo da transferência" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TRANSFER_MOTIVOS.map((motivo) => (
+                        <SelectItem key={motivo.codigo} value={motivo.designacao}>
+                          {motivo.designacao}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.motivoTransferencia && (
+                    <p className="text-sm text-red-500 flex items-center">
+                      <AlertCircle className="h-4 w-4 mr-1" />
+                      {errors.motivoTransferencia}
+                    </p>
+                  )}
+                </div>
+
+                <div className="md:col-span-2 space-y-2 ultra-fast-fade">
+                  <label className="text-sm font-medium text-gray-700">
+                    Observações
+                  </label>
+                  <Textarea
+                    placeholder="Digite observações adicionais sobre a transferência..."
+                    value={formData.obs}
+                    onChange={(e) => handleInputChange('obs', e.target.value)}
+                    rows={4}
+                  />
+                  <p className="text-xs text-gray-500">
+                    Adicione informações complementares que possam ser relevantes para a transferência.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Resumo */}
+        <div className="space-y-6 ultra-fast-fade">
+          <Card>
+            <CardHeader>
+              <CardTitle>Resumo da Transferência</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {currentSelectedStudent ? (
+                <div className="p-4 bg-blue-50 rounded-lg">
+                  <h4 className="font-medium text-blue-900 mb-2">Aluno Selecionado</h4>
+                  <p className="text-sm font-semibold text-blue-800">{currentSelectedStudent.nome}</p>
+                  <p className="text-xs text-blue-600">{currentSelectedStudent.email || 'Email não informado'}</p>
+                  <p className="text-xs text-blue-600">
+                    {currentSelectedStudent.dataNascimento ? calculateAge(currentSelectedStudent.dataNascimento) : 'N/A'} anos
+                  </p>
+                </div>
+              ) : (
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <p className="text-sm text-gray-500">Nenhum aluno selecionado</p>
+                </div>
+              )}
+
+              {formData.escolaDestino && (
+                <div className="p-4 bg-green-50 rounded-lg">
+                  <h4 className="font-medium text-green-900 mb-2">Escola Destino</h4>
+                  <p className="text-sm font-semibold text-green-800">{formData.escolaDestino}</p>
+                </div>
+              )}
+
+              {formData.dataTransferencia && (
+                <div className="p-4 bg-yellow-50 rounded-lg">
+                  <h4 className="font-medium text-yellow-900 mb-2">Data de Transferência</h4>
+                  <p className="text-sm font-semibold text-yellow-800">
+                    {new Date(formData.dataTransferencia).toLocaleDateString('pt-AO')}
+                  </p>
+                </div>
+              )}
+
+              {formData.motivoTransferencia && (
+                <div className="p-4 bg-purple-50 rounded-lg">
+                  <h4 className="font-medium text-purple-900 mb-2">Motivo</h4>
+                  <p className="text-sm font-semibold text-purple-800">{formData.motivoTransferencia}</p>
+                </div>
+              )}
+
+              <div className="p-4 bg-indigo-50 rounded-lg">
+                <h4 className="font-medium text-indigo-900 mb-2">Status</h4>
+                <Badge 
+                  variant={
+                    formData.status === "Aprovada" ? "default" : 
+                    formData.status === "Pendente" ? "secondary" : 
+                    "destructive"
+                  }
+                  className={
+                    formData.status === "Aprovada" ? "bg-green-100 text-green-800" :
+                    formData.status === "Pendente" ? "bg-yellow-100 text-yellow-800" :
+                    "bg-red-100 text-red-800"
+                  }
+                >
+                  {formData.status}
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Informações Importantes */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <AlertCircle className="h-5 w-5 text-blue-500" />
+                <span>Informações Importantes</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="text-sm text-gray-600 space-y-2 ultra-fast-fade">
+                <p>• Verifique se todos os dados estão corretos antes de salvar</p>
+                <p>• A data de transferência não pode ser futura</p>
+                <p>• O status pode ser alterado posteriormente se necessário</p>
+                <p>• Transferências aprovadas requerem documentação adicional</p>
+                <p>• Mantenha as observações claras e objetivas</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}

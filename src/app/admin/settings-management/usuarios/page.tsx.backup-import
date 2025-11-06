@@ -1,0 +1,455 @@
+"use client";
+
+import React, { useCallback, { useState } } from 'react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Users,
+  Plus,
+  Edit,
+  Trash2,
+  Shield,
+  UserCheck,
+  UserX,
+  Eye,
+  Settings,
+  MoreHorizontal,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
+import { useUsersLegacy, useDeleteUser, useUpdateUser, useDeactivateUser } from '@/hooks/useUsers';
+import { useUserTypes } from '@/hooks/useAuth';
+import { UserModal } from '@/components/users/users-modal';
+import { AdvancedDeleteModal } from '@/components/users/advanced-delete-modal';
+import { useToast, ToastContainer } from '@/components/ui/toast';
+
+import WelcomeHeader from '@/components/layout/WelcomeHeader';
+import FilterSearchCard from '@/components/layout/FilterSearchCard';
+import StatCard from '@/components/layout/StatCard';
+import { useFilterOptions } from '@/hooks/useFilterOptions';
+
+interface Usuario {
+  codigo: number;
+  nome: string;
+  user: string;
+  passe?: string;
+  codigo_Tipo_Utilizador: number;
+  estadoActual: string;
+  dataCadastro: string;
+  loginStatus: string;
+  tb_tipos_utilizador?: {
+    codigo: number;
+    designacao: string;
+  };
+}
+
+export default function UsuariosPage() {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedTipoUsuario, setSelectedTipoUsuario] = useState<string>('all');
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  
+  // Estados para modais
+  const [userModalOpen, setUserModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<Usuario | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<Usuario | null>(null);
+
+  const { users, meta, loading, error, page, setPage, refetch } = useUsersLegacy(1, 10);
+  const { deleteUser, loading: deletingUser } = useDeleteUser();
+  const { deactivateUser, loading: deactivatingUser } = useDeactivateUser();
+  const { updateUser, loading: updatingUser } = useUpdateUser();
+  const { success, error: showError } = useToast();
+  
+  // Buscar tipos de usuário da API
+  const { userTypes, loading: loadingUserTypes } = useUserTypes();
+  const { statusOptions } = useFilterOptions();
+
+  const getTipoUsuarioColor = (designacao: string) => {
+    switch (designacao.toLowerCase()) {
+      case 'administrador': return 'bg-red-100 text-red-800';
+      case 'operador': return 'bg-blue-100 text-blue-800';
+      case 'assistente administrativo': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Activo': return 'bg-green-100 text-green-800';
+      case 'Desactivo': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'Activo': return <UserCheck className="h-4 w-4" />;
+      case 'Desactivo': return <UserX className="h-4 w-4" />;
+      default: return <UserX className="h-4 w-4" />;
+    }
+  };
+
+  const getLoginStatusColor = (loginStatus: string) => {
+    switch (loginStatus) {
+      case 'ON': return 'bg-green-100 text-green-800';
+      case 'OFF': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+
+  const filteredUsuarios = (users as Usuario[])?.filter((usuario) => {
+    const matchesSearch = usuario.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      usuario.user.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesTipoUsuario = selectedTipoUsuario === 'all' || usuario.tb_tipos_utilizador?.designacao === selectedTipoUsuario;
+    const matchesStatus = selectedStatus === 'all' || usuario.estadoActual === selectedStatus;
+
+    return matchesSearch && matchesTipoUsuario && matchesStatus;
+  }) || [];
+
+  const getUsuariosPorTipo = (tipo: string) => {
+    return (users as Usuario[])?.filter((u) => u.tb_tipos_utilizador?.designacao === tipo).length || 0;
+  };
+
+  const getUsuariosAtivos = () => {
+    return (users as Usuario[])?.filter((u) => u.estadoActual === 'Activo').length || 0;
+  };
+
+  // Usar tipos de usuário da API ao invés de extrair dos usuários
+  const tipoUsuarioOptions = [
+    { value: "all", label: "Todos os Tipos" },
+    ...userTypes.map((tipo) => ({ 
+      value: tipo.designacao, 
+      label: tipo.designacao 
+    }))
+  ];
+
+  // Funções para manipular modais
+  const handleNewUser = useCallback(() => {
+    setSelectedUser(null);
+    setUserModalOpen(true);
+  };
+
+  const handleEditUser = useCallback((user: Usuario) => {
+    setSelectedUser(user);
+    setUserModalOpen(true);
+  };
+
+  const handleDeleteUser = useCallback((user: Usuario) => {
+    setUserToDelete(user);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDeleteUser = async (action: 'delete' | 'deactivate') => {
+    if (!userToDelete) return;
+    
+    try {
+      if (action === 'delete') {
+        await deleteUser(userToDelete.codigo);
+        success('Usuário excluído com sucesso!', 'O usuário e todos os dados relacionados foram removidos do sistema.');
+      } else {
+        await deactivateUser(userToDelete.codigo);
+        success('Usuário desativado com sucesso!', 'O usuário foi desativado mas seus dados foram preservados.');
+      }
+      
+      setDeleteModalOpen(false);
+      setUserToDelete(null);
+      refetch(); // Recarregar a lista
+    } catch (error: any) {
+      console.error(`❌ Erro ao ${action === 'delete' ? 'excluir' : 'desativar'} usuário:`, error);
+      
+      // Mostrar mensagem de erro mais específica
+      const errorMessage = error.message || 'Ocorreu um erro inesperado.';
+      showError(`Erro ao ${action === 'delete' ? 'excluir' : 'desativar'} usuário`, errorMessage);
+      
+      // Fechar modal mesmo com erro para permitir nova tentativa
+      setDeleteModalOpen(false);
+      setUserToDelete(null);
+    }
+  };
+
+  const handleUserModalSuccess = useCallback(() => {
+    refetch(); // Recarregar a lista após criar/editar
+  };
+
+  return (
+    <div className="space-y-6 ultra-fast-fade">
+
+      <WelcomeHeader
+        iconMain={<Users className="h-8 w-8 text-white" />}
+        title="Gestão de Usuários"
+        description="Gerencie usuários do sistema, configure perfis de acesso, defina permissões e monitore atividades dos usuários."
+        titleBtnRight="Novo Usuário"
+        iconBtnRight={<Plus className="w-5 h-5 mr-2" />}
+        onClickBtnRight={handleNewUser}
+      />
+
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+        <StatCard
+          title="Total de Usuários"
+          value={`${users?.length || 0}`}
+          change={`${users?.length || 0}`}
+          changeType="neutral"
+          icon={Users}
+          color="text-blue-600"
+          bgColor="bg-gradient-to-br from-blue-50 via-white to-blue-50/50"
+          accentColor="bg-gradient-to-br from-blue-500 to-blue-600"
+        />
+
+        <StatCard
+          title="Usuários Ativos"
+          value={`${getUsuariosAtivos()}`}
+          change={`${getUsuariosAtivos()}`}
+          changeType="up"
+          icon={UserCheck}
+          color="text-green-600"
+          bgColor="bg-gradient-to-br from-green-50 via-white to-green-50/50"
+          accentColor="bg-gradient-to-br from-green-500 to-green-600"
+        />
+
+        <StatCard
+          title="Administradores"
+          value={`${getUsuariosPorTipo('Administrador')}`}
+          change={`${getUsuariosPorTipo('Administrador')}`}
+          changeType="neutral"
+          icon={Shield}
+          color="text-yellow-600"
+          bgColor="bg-gradient-to-br from-amber-50 via-white to-yellow-50/50"
+          accentColor="bg-gradient-to-br from-[#FFD002] to-[#F5DEB3]"
+        />
+
+        <StatCard
+          title="Operadores"
+          value={`${getUsuariosPorTipo('Operador')}`}
+          change={`${getUsuariosPorTipo('Operador')}`}
+          changeType="neutral"
+          icon={Settings}
+          color="text-purple-600"
+          bgColor="bg-gradient-to-br from-purple-50 via-white to-purple-50/50"
+          accentColor="bg-gradient-to-br from-purple-500 to-purple-600"
+        />
+      </div>
+
+      <FilterSearchCard
+        title="Buscar e Filtrar Usuários"
+        searchPlaceholder="Buscar por nome ou username..."
+        searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+        filters={[
+          {
+            label: "Tipo de Usuário",
+            value: selectedTipoUsuario,
+            onChange: setSelectedTipoUsuario,
+            options: tipoUsuarioOptions,
+            width: "w-48"
+          },
+          {
+            label: "Status",
+            value: selectedStatus,
+            onChange: setSelectedStatus,
+            options: statusOptions,
+            width: "w-48"
+          }
+        ]}
+      />
+
+      <div className="">
+
+        {/* Lista de Usuários */}
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Users className="h-5 w-5" />
+                <span>Lista de Usuários</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+
+              {/* Lista */}
+              {loading && (
+                <div className="flex justify-center items-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#F9CD1D] loading-spinner"></div>
+                </div>
+              )}
+
+              {!loading && !error && filteredUsuarios.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  Nenhum usuário encontrado.
+                </div>
+              )}
+
+              {!loading && !error && filteredUsuarios.length > 0 && (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Usuário</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Login</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredUsuarios.map((usuario: Usuario) => (
+                        <TableRow key={usuario.codigo}>
+                          <TableCell>
+                            <div className="flex items-center space-x-3">
+                              <div className="w-10 h-10 rounded-full bg-[#F9CD1D]/10 flex items-center justify-center">
+                                <Users className="h-5 w-5 text-[#F9CD1D]" />
+                              </div>
+                              <div>
+                                <p className="font-medium text-gray-900">{usuario.nome}</p>
+                                <p className="text-sm text-gray-500">@{usuario.user}</p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={getTipoUsuarioColor(usuario.tb_tipos_utilizador?.designacao || '')}>
+                              <Shield className="mr-1 h-3 w-3" />
+                              {usuario.tb_tipos_utilizador?.designacao || 'N/A'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={getStatusColor(usuario.estadoActual)}>
+                              {getStatusIcon(usuario.estadoActual)}
+                              <span className="ml-1">{usuario.estadoActual}</span>
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={getLoginStatusColor(usuario.loginStatus)}>
+                              <div className={`w-2 h-2 rounded-full mr-2 ${usuario.loginStatus === 'ON' ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                              {usuario.loginStatus}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  Visualizar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleEditUser(usuario)}>
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Editar
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  className="text-red-600"
+                                  onClick={() => handleDeleteUser(usuario)}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Excluir
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+
+              {/* Paginação */}
+              {meta && (meta as any).totalPages > 1 && (
+                <div className="flex items-center justify-between space-x-2 py-4">
+                  <div className="text-sm text-gray-500">
+                    Mostrando {((page - 1) * 10) + 1} a {Math.min(page * 10, (meta as any).total)} de {(meta as any).total} usuários
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage(page - 1)}
+                      disabled={page === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Anterior
+                    </Button>
+                    <div className="flex items-center space-x-1">
+                      {Array.from({ length: Math.min(5, (meta as any).totalPages) }, (_, i) => {
+                        const pageNum = i + 1;
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={page === pageNum ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setPage(pageNum)}
+                            className={`w-8 h-8 ${page === pageNum ? "bg-[#F9CD1D] hover:bg-[#F9CD1D]/90" : ""}`}
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage(page + 1)}
+                      disabled={page === (meta as any).totalPages}
+                    >
+                      Próximo
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Modais */}
+      <UserModal
+        open={userModalOpen}
+        onOpenChange={setUserModalOpen}
+        user={selectedUser}
+        onSuccess={handleUserModalSuccess}
+        userTypes={userTypes}
+      />
+
+      <AdvancedDeleteModal
+        open={deleteModalOpen}
+        onOpenChange={setDeleteModalOpen}
+        onConfirm={confirmDeleteUser}
+        userName={userToDelete?.nome}
+        loading={deletingUser || deactivatingUser}
+      />
+
+      {/* Toast Notifications */}
+      <ToastContainer toasts={[]} onRemove={() => {}} />
+    </div>
+  );
+}

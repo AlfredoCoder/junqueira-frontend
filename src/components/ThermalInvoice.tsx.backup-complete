@@ -1,0 +1,233 @@
+import React, { useCallback } from 'react';
+import { Button } from '@/components/ui/button';
+import { Printer, Download } from 'lucide-react';
+
+export interface ThermalInvoiceData {
+  pagamento: {
+    codigo: number;
+    fatura: string;
+    data: string;
+    mes: string;
+    ano: number;
+    preco: number;
+    observacao: string;
+    aluno: {
+      codigo: number;
+      nome: string;
+      n_documento_identificacao: string;
+      email: string;
+      telefone: string;
+      tb_matriculas?: {
+        tb_cursos?: {
+          designacao: string;
+        }, []);
+        tb_confirmacoes?: Array<{
+          tb_turmas?: {
+            designacao: string;
+            tb_classes?: {
+              designacao: string;
+            }, []);
+          }, []);
+        }>;
+      }, []);
+    }, []);
+    tipoServico: {
+      designacao: string;
+    }, []);
+    formaPagamento: {
+      designacao: string;
+    }, []);
+    contaMovimentada?: string;
+    n_Bordoro?: string;
+    mesesPagos?: string[];
+  }, []);
+  operador?: string;
+}
+
+interface ThermalInvoiceProps {
+  data: ThermalInvoiceData;
+  onPrint?: () => void;
+  onDownload?: () => void;
+  showActions?: boolean;
+}
+
+export default function ThermalInvoice({ 
+  data, 
+  onPrint, 
+  onDownload, 
+  showActions = true 
+}: ThermalInvoiceProps) {
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-AO', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(value);
+  }, []);
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString('pt-BR');
+  }, []);
+
+  const handlePrint = useCallback(() => {
+    if (onPrint) {
+      onPrint();
+    } else {
+      window.print();
+    }
+  }, []);
+
+  // Extrair informações do curso e turma
+  const curso = data.pagamento.aluno.tb_matriculas?.tb_cursos?.designacao || '';
+  const confirmacao = data.pagamento.aluno.tb_matriculas?.tb_confirmacoes?.[0];
+  const turma = confirmacao?.tb_turmas?.designacao || '';
+  const classe = confirmacao?.tb_turmas?.tb_classes?.designacao || '';
+
+  return (
+    <div className="bg-white">
+      {/* Ações de impressão - só aparecem na tela */}
+      {showActions && (
+        <div className="flex justify-center gap-3 mb-4 print:hidden">
+          <Button
+            onClick={handlePrint}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            <Printer className="w-4 h-4 mr-2" />
+            Imprimir
+          </Button>
+          {onDownload && (
+            <Button
+              onClick={onDownload}
+              variant="outline"
+              className="border-blue-600 text-blue-600 hover:bg-blue-50"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Download PDF
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* Fatura térmica */}
+      <div 
+        className="bg-white text-black p-4 mx-auto border border-gray-300 print:border-0" 
+        style={{ width: "80mm", fontFamily: "monospace" }}
+      >
+        {/* Cabeçalho */}
+        <div className="text-center text-sm border-b border-dashed border-gray-400 pb-2 mb-2">
+           <img src=".../public/icon.png" alt="Logo" style={{ width: "40px", height: "auto", marginBottom: "5px" }} />
+          <h2 className="font-bold text-base">COMPLEXO ESCOLAR PRIVADO Complexo Abilio Junqueira</h2>
+          <p>NIF: 5101165107</p>
+          <p>Bairro 1º de Maio, Zongoio - Cabinda</p>
+          <p>Tlf: 915312187</p>
+          <p>Data: {formatDate(data.pagamento.data)}</p>
+        </div>
+
+        {/* Dados do Aluno */}
+        <div className="text-sm mb-2">
+          <p><strong>Aluno(a):</strong> {data.pagamento.aluno.nome}</p>
+          <p>Consumidor Final</p>
+          {curso && <p>{curso}</p>}
+          {classe && turma && <p>{classe} - {turma}</p>}
+          {data.pagamento.aluno.n_documento_identificacao && (
+            <p>Doc: {data.pagamento.aluno.n_documento_identificacao}</p>
+          )}
+        </div>
+
+        {/* Tabela de serviços */}
+        <table className="w-full text-sm border-t border-b border-dashed border-gray-400 my-2">
+          <thead>
+            <tr className="text-left">
+              <th className="w-1/2">Serviços</th>
+              <th className="text-right">Qtd</th>
+              <th className="text-right">P.Unit</th>
+              <th className="text-right">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td className="py-1">{data.pagamento.tipoServico.designacao}</td>
+              <td className="text-right py-1">1</td>
+              <td className="text-right py-1">{formatCurrency(data.pagamento.preco)}</td>
+              <td className="text-right py-1">{formatCurrency(data.pagamento.preco)}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* Totais */}
+        <div className="text-sm space-y-1 ultra-fast-fade">
+          <p>Forma de Pagamento: {data.pagamento.formaPagamento.designacao}</p>
+          
+          {/* Informações bancárias apenas para depósitos */}
+          {data.pagamento.contaMovimentada && (
+            <p>Conta Bancária: {data.pagamento.contaMovimentada}</p>
+          )}
+          {data.pagamento.n_Bordoro && (
+            <p>Nº Borderô: {data.pagamento.n_Bordoro}</p>
+          )}
+          
+          {/* Meses pagos */}
+          {data.pagamento.mesesPagos && data.pagamento.mesesPagos.length > 0 && (
+            <p>Meses: {data.pagamento.mesesPagos.join(', ')}</p>
+          )}
+          
+          <p>Total: {formatCurrency(data.pagamento.preco)}</p>
+          <p>Total IVA: 0.00</p>
+          <p>N.º de Itens: {data.pagamento.mesesPagos?.length || 1}</p>
+          <p>Desconto: 0.00</p>
+          <p>A Pagar: {formatCurrency(data.pagamento.preco)}</p>
+          <p>Total Pago: {formatCurrency(data.pagamento.preco)}</p>
+          <p>Pago em Saldo: 0.00</p>
+          <p>Saldo Actual: 0.00</p>
+        </div>
+
+        {/* Observações */}
+        {data.pagamento.observacao && (
+          <div className="text-sm mt-2 border-t border-dashed border-gray-400 pt-2">
+            <p><strong>Obs:</strong> {data.pagamento.observacao}</p>
+          </div>
+        )}
+
+        {/* Rodapé */}
+        <div className="text-center text-xs border-t border-dashed border-gray-400 mt-3 pt-2">
+          <p>Operador: {data.operador || 'Sistema'}</p>
+          <p>Emitido em: {formatDate(data.pagamento.data)}</p>
+          <p>Fatura: {data.pagamento.fatura}</p>
+          <p>REGIME SIMPLIFICADO</p>
+          <p>Processado pelo computador</p>
+        </div>
+
+        {/* Selo de Pago */}
+        <div className="text-center mt-4">
+          <span className="text-blue-600 font-bold text-lg">[ PAGO ]</span>
+        </div>
+      </div>
+
+      {/* Estilos de impressão */}
+      <style jsx>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          
+          .thermal-invoice, .thermal-invoice * {
+            visibility: visible;
+          }
+          
+          .thermal-invoice {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 80mm !important;
+            margin: 0 !important;
+            padding: 5mm !important;
+          }
+          
+          @page {
+            size: 80mm auto;
+            margin: 0;
+          }
+        }
+      `}</style>
+    </div>
+  );
+}

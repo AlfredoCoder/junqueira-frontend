@@ -1,0 +1,703 @@
+"use client";
+
+import React, { useCallback, useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Calendar,
+  Save,
+  Plus,
+  Edit,
+  Trash2,
+  X,
+  CheckCircle,
+  Clock,
+  AlertCircle,
+  BookOpen,
+  Users,
+  GraduationCap,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
+import { useAnosLectivos, useCreateAnoLectivo, useUpdateAnoLectivo, useDeleteAnoLectivo } from '@/hooks/useAnoLectivo';
+import { IAnoLectivoInput } from '@/types/anoLectivo.types';
+
+export default function AnoLetivoPage() {
+  // Hooks da API
+  const { anosLectivos, pagination, isLoading, error, fetchAnosLectivos } = useAnosLectivos();
+  const { createAnoLectivo, isLoading: createLoading } = useCreateAnoLectivo();
+  const { updateAnoLectivo, isLoading: updateLoading } = useUpdateAnoLectivo();
+  const { deleteAnoLectivo, isLoading: deleteLoading } = useDeleteAnoLectivo();
+
+  const [novoAno, setNovoAno] = useState<IAnoLectivoInput>({
+    designacao: '',
+    mesInicial: '',
+    mesFinal: '',
+    anoInicial: '',
+    anoFinal: ''
+  });
+
+  // Estados para edição
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  
+  // Estado para controlar qual item está sendo deletado
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  
+  // Estados para modal de confirmação
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<{id: number, nome: string} | null>(null);
+  
+  // Estados para modal de adicionar/editar
+  const [showFormModal, setShowFormModal] = useState(false);
+  
+  // Estados para paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+
+  // Carregar dados iniciais e quando a página mudar
+  useEffect(() => {
+    fetchAnosLectivos(currentPage, itemsPerPage);
+  }, [currentPage]);
+
+  // Carregar dados iniciais na montagem
+  useEffect(() => {
+    fetchAnosLectivos(1, itemsPerPage);
+  }, []);
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'ativo': return 'bg-green-100 text-green-800';
+      case 'concluido': return 'bg-blue-100 text-blue-800';
+      case 'inativo': return 'bg-gray-100 text-gray-800';
+      case 'planejado': return 'bg-yellow-100 text-yellow-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  }, []);
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'ativo': return <CheckCircle className="h-4 w-4" />;
+      case 'concluido': return <CheckCircle className="h-4 w-4" />;
+      case 'planejado': return <Clock className="h-4 w-4" />;
+      default: return <AlertCircle className="h-4 w-4" />;
+    }
+  }, []);
+
+  const formatMes = (mes: string) => {
+    const meses: { [key: string]: string } = {
+      'JANEIRO': 'Janeiro',
+      'FEVEREIRO': 'Fevereiro',
+      'MARÇO': 'Março',
+      'ABRIL': 'Abril',
+      'MAIO': 'Maio',
+      'JUNHO': 'Junho',
+      'JULHO': 'Julho',
+      'AGOSTO': 'Agosto',
+      'SETEMBRO': 'Setembro',
+      'OUTUBRO': 'Outubro',
+      'NOVEMBRO': 'Novembro',
+      'DEZEMBRO': 'Dezembro'
+    }, []);
+    return meses[mes] || mes;
+  }, []);
+
+  const handleCreateAnoLectivo = async () => {
+    try {
+      if (isEditing && editingId) {
+        // Atualizar ano letivo existente
+        await updateAnoLectivo(editingId, novoAno);
+        setIsEditing(false);
+        setEditingId(null);
+      } else {
+        // Criar novo ano letivo
+        await createAnoLectivo(novoAno);
+      }
+      
+      // Limpar formulário e fechar modal
+      setNovoAno({
+        designacao: '',
+        mesInicial: '',
+        mesFinal: '',
+        anoInicial: '',
+        anoFinal: ''
+      });
+      setShowFormModal(false);
+      setIsEditing(false);
+      setEditingId(null);
+      
+      await fetchAnosLectivos(currentPage, itemsPerPage); // Recarregar lista
+    } catch (error) {
+      console.error('Erro ao salvar ano letivo:', error);
+    }
+  }, []);
+
+  const handleEditAnoLectivo = useCallback((ano: any) => {
+    setNovoAno({
+      designacao: ano.designacao,
+      mesInicial: ano.mesInicial,
+      mesFinal: ano.mesFinal,
+      anoInicial: ano.anoInicial,
+      anoFinal: ano.anoFinal
+    });
+    setEditingId(ano.codigo);
+    setIsEditing(true);
+    setShowFormModal(true);
+  }, []);
+
+  const handleNewAnoLectivo = useCallback(() => {
+    setNovoAno({
+      designacao: '',
+      mesInicial: '',
+      mesFinal: '',
+      anoInicial: '',
+      anoFinal: ''
+    });
+    setIsEditing(false);
+    setEditingId(null);
+    setShowFormModal(true);
+  }, []);
+
+  const handleCancelEdit = useCallback(() => {
+    setNovoAno({
+      designacao: '',
+      mesInicial: '',
+      mesFinal: '',
+      anoInicial: '',
+      anoFinal: ''
+    });
+    setIsEditing(false);
+    setEditingId(null);
+    setShowFormModal(false);
+  }, []);
+
+  const handleDeleteClick = useCallback((ano: any) => {
+    setItemToDelete({ id: ano.codigo, nome: ano.designacao });
+    setShowDeleteModal(true);
+  }, []);
+
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete) return;
+    
+    console.log('Tentando excluir ano letivo com ID:', itemToDelete.id);
+    setDeletingId(itemToDelete.id);
+    setShowDeleteModal(false);
+    
+    try {
+      console.log('Chamando deleteAnoLectivo para ID:', itemToDelete.id);
+      await deleteAnoLectivo(itemToDelete.id);
+      console.log('Ano letivo excluído com sucesso:', itemToDelete.id);
+      
+      // Recarregar lista
+      console.log('Recarregando lista de anos letivos...');
+      await fetchAnosLectivos(currentPage, itemsPerPage);
+      console.log('Lista recarregada com sucesso');
+      
+    } catch (error: any) {
+      console.error('Erro detalhado ao excluir ano letivo:', error);
+      console.error('Mensagem do erro:', error.message);
+      console.error('Stack do erro:', error.stack);
+      alert(`Erro ao excluir ano letivo: ${error.message || 'Erro desconhecido'}`);
+    } finally {
+      setDeletingId(null);
+      setItemToDelete(null);
+    }
+  }, []);
+
+  const handleCancelDelete = useCallback(() => {
+    setShowDeleteModal(false);
+    setItemToDelete(null);
+  }, []);
+
+  return (
+    <div className="space-y-6 ultra-fast-fade">
+      {/* Header */}
+      <div className="relative overflow-hidden rounded-2xl bg-white border border-gray-200 p-8 mb-8 shadow-sm">
+        <div className="relative z-10">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-6 lg:space-y-0 ultra-fast-fade">
+            <div className="space-y-3 ultra-fast-fade">
+              <div className="flex items-center space-x-4">
+                <div className="h-16 w-16 bg-[#F9CD1D] rounded-2xl flex items-center justify-center shadow-md">
+                  <Calendar className="h-8 w-8 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-4xl font-bold text-gray-900">
+                    Ano Letivo
+                  </h1>
+                  <p className="text-[#F9CD1D] font-semibold text-lg">Gestão de Anos Letivos e Trimestres</p>
+                </div>
+              </div>
+              <p className="text-gray-600 text-sm max-w-2xl">
+                Configure os anos letivos, defina períodos acadêmicos e gerencie 
+                os trimestres do calendário escolar.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button 
+                onClick={handleNewAnoLectivo}
+                className="bg-[#F9CD1D] hover:bg-[#F9CD1D]/90 text-white"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Novo Ano Letivo
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Decorative elements */}
+        <div className="absolute -top-16 -right-16 w-32 h-32 bg-[#D2B48C]/5 rounded-full"></div>
+        <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-gray-100 rounded-full"></div>
+      </div>
+
+      {/* Status Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-50 via-white to-green-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 rounded-xl bg-gradient-to-br from-green-500 to-green-600 shadow-sm">
+              <Calendar className="h-6 w-6 text-white" />
+            </div>
+            <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
+              <CheckCircle className="h-3 w-3 text-green-500" />
+              <span className="font-bold text-xs text-green-600">Total</span>
+            </div>
+          </div>
+          <div>
+            <p className="text-sm font-semibold mb-2 text-green-600">Anos Letivos</p>
+            <p className="text-3xl font-bold text-gray-900">{anosLectivos.length}</p>
+          </div>
+        </div>
+
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 via-white to-blue-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 rounded-xl bg-gradient-to-br from-[#182F59] to-[#1a3260] shadow-sm">
+              <BookOpen className="h-6 w-6 text-white" />
+            </div>
+            <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
+              <Clock className="h-3 w-3 text-blue-500" />
+              <span className="font-bold text-xs text-blue-600">Atual</span>
+            </div>
+          </div>
+          <div>
+            <p className="text-sm font-semibold mb-2 text-[#182F59]">Ano Atual</p>
+            <p className="text-3xl font-bold text-gray-900">
+              {anosLectivos.length > 0 ? anosLectivos[0]?.designacao : '-'}
+            </p>
+          </div>
+        </div>
+
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-50 via-white to-yellow-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 rounded-xl bg-gradient-to-br from-[#FFD002] to-[#F5DEB3] shadow-sm">
+              <Users className="h-6 w-6 text-white" />
+            </div>
+            <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
+              <Users className="h-3 w-3 text-yellow-500" />
+              <span className="font-bold text-xs text-yellow-600">API</span>
+            </div>
+          </div>
+          <div>
+            <p className="text-sm font-semibold mb-2 text-[#FFD002]">Status</p>
+            <p className="text-3xl font-bold text-gray-900">Conectado</p>
+          </div>
+        </div>
+
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-50 via-white to-purple-50/50 border border-gray-100 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 shadow-sm">
+              <GraduationCap className="h-6 w-6 text-white" />
+            </div>
+            <div className="flex items-center space-x-1 text-sm bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
+              <Calendar className="h-3 w-3 text-purple-500" />
+              <span className="font-bold text-xs text-purple-600">Real</span>
+            </div>
+          </div>
+          <div>
+            <p className="text-sm font-semibold mb-2 text-purple-600">Dados da API</p>
+            <p className="text-3xl font-bold text-gray-900">✓</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Lista de Anos Letivos */}
+      <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Calendar className="h-5 w-5" />
+                <span>Anos Letivos</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-[#F9CD1D] loading-spinner" />
+                  <span className="ml-2 text-gray-600">Carregando anos letivos...</span>
+                </div>
+              ) : error ? (
+                <div className="text-center py-8">
+                  <p className="text-red-600 mb-4">{error}</p>
+                  <Button onClick={() => fetchAnosLectivos()} variant="outline">
+                    Tentar novamente
+                  </Button>
+                </div>
+              ) : anosLectivos.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-600">Nenhum ano letivo encontrado.</p>
+                </div>
+              ) : (
+                <div className="space-y-6 ultra-fast-fade">
+                  {anosLectivos.map((ano) => (
+                    <div key={ano.codigo} className="border rounded-lg p-6 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900">{ano.designacao}</h3>
+                            <p className="text-sm text-gray-600">
+                              {formatMes(ano.mesInicial)} {ano.anoInicial} - {formatMes(ano.mesFinal)} {ano.anoFinal}
+                            </p>
+                          </div>
+                          <Badge className="bg-green-100 text-green-800">
+                            <CheckCircle className="h-4 w-4" />
+                            <span className="ml-1">Ativo</span>
+                          </Badge>
+                        </div>
+                        <div className="flex space-x-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleEditAnoLectivo(ano)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="text-red-600 hover:text-red-700"
+                            onClick={() => handleDeleteClick(ano)}
+                            disabled={deletingId === ano.codigo}
+                          >
+                            {deletingId === ano.codigo ? (
+                              <Loader2 className="h-4 w-4 animate-spin loading-spinner" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {/* Paginação Completa */}
+              {pagination && pagination.totalPages > 1 && (
+                <div className="mt-6 flex items-center justify-between space-x-2 py-4">
+                  <div className="text-sm text-gray-500">
+                    Mostrando {((pagination.currentPage - 1) * pagination.itemsPerPage) + 1} a {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)} de {pagination.totalItems} anos letivos
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1 || isLoading}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Anterior
+                    </Button>
+                    <div className="flex items-center space-x-1">
+                      {(() => {
+                        const maxPagesToShow = 5;
+                        const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+                        const endPage = Math.min(pagination.totalPages, startPage + maxPagesToShow - 1);
+                        const adjustedStartPage = Math.max(1, endPage - maxPagesToShow + 1);
+                        
+                        const pages = [];
+                        
+                        // Primeira página
+                        if (adjustedStartPage > 1) {
+                          pages.push(
+                            <Button
+                              key={1}
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setCurrentPage(1)}
+                              disabled={isLoading}
+                            >
+                              1
+                            </Button>
+                          );
+                          if (adjustedStartPage > 2) {
+                            pages.push(<span key="ellipsis1" className="px-2">...</span>);
+                          }
+                        }
+                        
+                        // Páginas do meio
+                        for (let i = adjustedStartPage; i <= endPage; i++) {
+                          pages.push(
+                            <Button
+                              key={i}
+                              variant={currentPage === i ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setCurrentPage(i)}
+                              disabled={isLoading}
+                              className={currentPage === i ? "bg-[#F9CD1D] hover:bg-[#F9CD1D]/90 text-white" : ""}
+                            >
+                              {i}
+                            </Button>
+                          );
+                        }
+                        
+                        // Última página
+                        if (endPage < pagination.totalPages) {
+                          if (endPage < pagination.totalPages - 1) {
+                            pages.push(<span key="ellipsis2" className="px-2">...</span>);
+                          }
+                          pages.push(
+                            <Button
+                              key={pagination.totalPages}
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setCurrentPage(pagination.totalPages)}
+                              disabled={isLoading}
+                            >
+                              {pagination.totalPages}
+                            </Button>
+                          );
+                        }
+                        
+                        return pages;
+                      })()}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, pagination.totalPages))}
+                      disabled={currentPage === pagination.totalPages || isLoading}
+                    >
+                      Próximo
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+      {/* Modal de Formulário */}
+      <Dialog open={showFormModal} onOpenChange={setShowFormModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              {isEditing ? (
+                <>
+                  <Edit className="h-5 w-5" />
+                  <span>Editar Ano Letivo</span>
+                </>
+              ) : (
+                <>
+                  <Plus className="h-5 w-5" />
+                  <span>Novo Ano Letivo</span>
+                </>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 ultra-fast-fade">
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">
+                Designação do Ano Letivo
+              </label>
+              <Input
+                value={novoAno.designacao}
+                onChange={(e) => setNovoAno((prev: IAnoLectivoInput) => ({ ...prev, designacao: e.target.value }))}
+                placeholder="Ex: 2025/2026"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Mês Inicial
+                </label>
+                <Select
+                  value={novoAno.mesInicial}
+                  onValueChange={(value: string) => setNovoAno((prev: IAnoLectivoInput) => ({ ...prev, mesInicial: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o mês" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="JANEIRO">Janeiro</SelectItem>
+                    <SelectItem value="FEVEREIRO">Fevereiro</SelectItem>
+                    <SelectItem value="MARÇO">Março</SelectItem>
+                    <SelectItem value="ABRIL">Abril</SelectItem>
+                    <SelectItem value="MAIO">Maio</SelectItem>
+                    <SelectItem value="JUNHO">Junho</SelectItem>
+                    <SelectItem value="JULHO">Julho</SelectItem>
+                    <SelectItem value="AGOSTO">Agosto</SelectItem>
+                    <SelectItem value="SETEMBRO">Setembro</SelectItem>
+                    <SelectItem value="OUTUBRO">Outubro</SelectItem>
+                    <SelectItem value="NOVEMBRO">Novembro</SelectItem>
+                    <SelectItem value="DEZEMBRO">Dezembro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Ano Inicial
+                </label>
+                <Input
+                  value={novoAno.anoInicial}
+                  onChange={(e) => setNovoAno((prev: IAnoLectivoInput) => ({ ...prev, anoInicial: e.target.value }))}
+                  placeholder="Ex: 2025"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Mês Final
+                </label>
+                <Select
+                  value={novoAno.mesFinal}
+                  onValueChange={(value: string) => setNovoAno((prev: IAnoLectivoInput) => ({ ...prev, mesFinal: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o mês" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="JANEIRO">Janeiro</SelectItem>
+                    <SelectItem value="FEVEREIRO">Fevereiro</SelectItem>
+                    <SelectItem value="MARÇO">Março</SelectItem>
+                    <SelectItem value="ABRIL">Abril</SelectItem>
+                    <SelectItem value="MAIO">Maio</SelectItem>
+                    <SelectItem value="JUNHO">Junho</SelectItem>
+                    <SelectItem value="JULHO">Julho</SelectItem>
+                    <SelectItem value="AGOSTO">Agosto</SelectItem>
+                    <SelectItem value="SETEMBRO">Setembro</SelectItem>
+                    <SelectItem value="OUTUBRO">Outubro</SelectItem>
+                    <SelectItem value="NOVEMBRO">Novembro</SelectItem>
+                    <SelectItem value="DEZEMBRO">Dezembro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Ano Final
+                </label>
+                <Input
+                  value={novoAno.anoFinal}
+                  onChange={(e) => setNovoAno((prev: IAnoLectivoInput) => ({ ...prev, anoFinal: e.target.value }))}
+                  placeholder="Ex: 2026"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="flex space-x-2">
+            <Button
+              variant="outline"
+              onClick={handleCancelEdit}
+              disabled={createLoading || updateLoading}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleCreateAnoLectivo}
+              disabled={createLoading || updateLoading}
+              className="bg-[#F9CD1D] hover:bg-[#F9CD1D]/90 text-white"
+            >
+              {(createLoading || updateLoading) ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin loading-spinner" />
+                  {isEditing ? 'Atualizando...' : 'Criando...'}
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  {isEditing ? 'Atualizar' : 'Criar'}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Confirmação de Exclusão */}
+      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <div className="h-10 w-10 bg-red-100 rounded-full flex items-center justify-center">
+                <Trash2 className="h-5 w-5 text-red-600" />
+              </div>
+              <span>Confirmar Exclusão</span>
+            </DialogTitle>
+            <DialogDescription className="text-left">
+              Tem certeza que deseja excluir o ano letivo{' '}
+              <span className="font-semibold text-gray-900">
+                {itemToDelete?.nome}
+              </span>
+              ?
+              <br />
+              <br />
+              <span className="text-red-600 font-medium">
+                Esta ação não pode ser desfeita.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex space-x-2">
+            <Button
+              variant="outline"
+              onClick={handleCancelDelete}
+              disabled={deletingId !== null}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={deletingId !== null}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deletingId === itemToDelete?.id ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin loading-spinner" />
+                  Excluindo...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Excluir
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

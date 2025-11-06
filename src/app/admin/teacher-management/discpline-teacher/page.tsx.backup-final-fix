@@ -1,0 +1,517 @@
+'use client';
+
+import React, { useCallback, useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'react-toastify';
+import {
+  Card, CardContent, CardHeader, CardTitle,
+} from '@/components/ui/card';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  BookOpen, Plus, GraduationCap, Users, Award
+} from 'lucide-react';
+
+import StatCard from '@/components/layout/StatCard';
+import { WelcomeHeader } from '@/components/dashboard';
+
+interface Professor {
+  codigo: number;
+  nome: string;
+  numeroFuncionario?: string;
+  status: string;
+}
+
+interface Disciplina {
+  codigo: number;
+  designacao: string;
+}
+
+interface Curso {
+  codigo: number;
+  designacao: string;
+}
+
+interface Turma {
+  codigo: number;
+  designacao: string;
+}
+
+interface AnoLectivo {
+  codigo: number;
+  designacao: string;
+}
+
+export default function AtribuicoesProfessoresPage() {
+  const router = useRouter();
+  
+  // Estados principais
+  const [professores, setProfessores] = useState<Professor[]>([]);
+  const [disciplinas, setDisciplinas] = useState<Disciplina[]>([]);
+  const [cursos, setCursos] = useState<Curso[]>([]);
+  const [turmas, setTurmas] = useState<Turma[]>([]);
+  const [anosLetivos, setAnosLetivos] = useState<AnoLectivo[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Estados do modal
+  const [showModal, setShowModal] = useState(false);
+  const [formData, setFormData] = useState({
+    professorId: '',
+    disciplinaId: '',
+    cursoId: '',
+    turmaId: '',
+    anoLectivo: '',
+    incluirTurma: false
+  });
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  
+  // Estados de estatísticas
+  const [stats, setStats] = useState({
+    totalProfessores: 0,
+    professoresAtivos: 0,
+    totalDisciplinas: 0,
+    totalTurmas: 0
+  });
+
+  // Carregar dados iniciais
+  useEffect(() => {
+    carregarDados();
+  };
+
+  const carregarDados = async () => {
+    try {
+      setLoading(true);
+      
+      console.log('Iniciando carregamento de dados...');
+      
+      // Carregar professores
+      try {
+        const professoresRes = await fetch('http://localhost:8000/api/professores');
+        if (professoresRes.ok) {
+          const professoresData = await professoresRes.json();
+          console.log('Professores carregados:', professoresData);
+          setProfessores(professoresData.data || []);
+        } else {
+          console.error('Erro ao carregar professores:', professoresRes.status);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar professores:', error);
+      }
+
+      // Carregar disciplinas
+      try {
+        const disciplinasRes = await fetch('http://localhost:8000/api/academic-management/disciplinas');
+        if (disciplinasRes.ok) {
+          const disciplinasData = await disciplinasRes.json();
+          console.log('Disciplinas carregadas:', disciplinasData);
+          setDisciplinas(disciplinasData.data || []);
+        } else {
+          console.error('Erro ao carregar disciplinas:', disciplinasRes.status);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar disciplinas:', error);
+      }
+
+      // Carregar cursos
+      try {
+        const cursosRes = await fetch('http://localhost:8000/api/academic-management/cursos');
+        if (cursosRes.ok) {
+          const cursosData = await cursosRes.json();
+          console.log('Cursos carregados:', cursosData);
+          setCursos(cursosData.data || []);
+        } else {
+          console.error('Erro ao carregar cursos:', cursosRes.status);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar cursos:', error);
+      }
+
+      // Carregar turmas
+      try {
+        const turmasRes = await fetch('http://localhost:8000/api/academic-management/turmas');
+        if (turmasRes.ok) {
+          const turmasData = await turmasRes.json();
+          console.log('Turmas carregadas:', turmasData);
+          setTurmas(turmasData.data || []);
+        } else {
+          console.error('Erro ao carregar turmas:', turmasRes.status);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar turmas:', error);
+      }
+
+      // Carregar anos letivos
+      try {
+        const anosLetivosRes = await fetch('http://localhost:8000/api/academic-management/anos-lectivos');
+        if (anosLetivosRes.ok) {
+          const anosLetivosData = await anosLetivosRes.json();
+          console.log('Anos letivos carregados:', anosLetivosData);
+          setAnosLetivos(anosLetivosData.data || []);
+        } else {
+          console.error('Erro ao carregar anos letivos:', anosLetivosRes.status);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar anos letivos:', error);
+      }
+
+    } catch (error) {
+      console.error('Erro geral ao carregar dados:', error);
+      toast.error('Erro ao carregar dados');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Calcular estatísticas quando os dados mudarem
+  useEffect(() => {
+    const totalProfessores = professores.length;
+    const professoresAtivos = professores.filter(p => p.status === 'Activo').length;
+    const totalDisciplinas = disciplinas.length;
+    const totalTurmas = turmas.length;
+    
+    setStats({ totalProfessores, professoresAtivos, totalDisciplinas, totalTurmas });
+  }, [professores, disciplinas, turmas]);
+
+  // Handlers do formulário
+  const handleInputChange = useCallback((field: string, value: string | boolean) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      // Criar atribuição de disciplina
+      const disciplinaResponse = await fetch(`http://localhost:8000/api/professores/${formData.professorId}/disciplinas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          disciplinaId: parseInt(formData.disciplinaId),
+          cursoId: parseInt(formData.cursoId),
+          anoLectivo: formData.anoLectivo
+        }),
+      });
+
+      if (disciplinaResponse.ok) {
+        const disciplinaData = await disciplinaResponse.json();
+        
+        if (disciplinaData.success) {
+          // Se incluir turma, criar atribuição de turma também
+          if (formData.incluirTurma && formData.turmaId) {
+            const turmaResponse = await fetch(`http://localhost:8000/api/professores/${formData.professorId}/turmas`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                turmaId: parseInt(formData.turmaId),
+                disciplinaId: parseInt(formData.disciplinaId),
+                anoLectivo: formData.anoLectivo
+              }),
+            });
+
+            if (turmaResponse.ok) {
+              const turmaData = await turmaResponse.json();
+              if (turmaData.success) {
+                toast.success('Atribuições criadas com sucesso!');
+              } else {
+                toast.error(turmaData.message || 'Erro ao criar atribuição de turma');
+                return;
+              }
+            } else {
+              toast.error('Erro ao criar atribuição de turma');
+              return;
+            }
+          } else {
+            toast.success('Atribuição de disciplina criada com sucesso!');
+          }
+          
+          setShowModal(false);
+          resetForm();
+        } else {
+          setMessage({ type: 'error', text: disciplinaData.message || 'Erro ao criar atribuição' });
+        }
+      } else {
+        setMessage({ type: 'error', text: 'Erro ao criar atribuição de disciplina' });
+      }
+
+    } catch (error) {
+      console.error('Erro ao criar atribuição:', error);
+      setMessage({ type: 'error', text: 'Erro de conexão' });
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      professorId: '',
+      disciplinaId: '',
+      cursoId: '',
+      turmaId: '',
+      anoLectivo: '',
+      incluirTurma: false
+    });
+    setMessage(null);
+  };
+
+  const openNewModal = () => {
+    resetForm();
+    setShowModal(true);
+  };
+
+  return (
+    <div className="space-y-6 ultra-fast-fade">
+        {/* Header */}
+        <WelcomeHeader 
+          title="Atribuições de Professores"
+        />
+
+        {/* Estatísticas */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <StatCard
+            title="Total de Professores"
+            value={stats.totalProfessores.toString()}
+            icon={Users}
+            change="0"
+            changeType="up"
+            color="text-blue-600"
+            bgColor="bg-blue-50"
+            accentColor="border-blue-200"
+          />
+          <StatCard
+            title="Professores Ativos"
+            value={stats.professoresAtivos.toString()}
+            icon={GraduationCap}
+            change="0"
+            changeType="up"
+            color="text-green-600"
+            bgColor="bg-green-50"
+            accentColor="border-green-200"
+          />
+          <StatCard
+            title="Total de Disciplinas"
+            value={stats.totalDisciplinas.toString()}
+            icon={BookOpen}
+            change="0"
+            changeType="up"
+            color="text-purple-600"
+            bgColor="bg-purple-50"
+            accentColor="border-purple-200"
+          />
+          <StatCard
+            title="Total de Turmas"
+            value={stats.totalTurmas.toString()}
+            icon={Award}
+            change="0"
+            changeType="up"
+            color="text-orange-600"
+            bgColor="bg-orange-50"
+            accentColor="border-orange-200"
+          />
+        </div>
+
+        {/* Ações */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Gerenciar Atribuições</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex justify-between items-center">
+              <p className="text-gray-600">
+                Crie novas atribuições de disciplinas e turmas para os professores.
+              </p>
+              <Button onClick={openNewModal}>
+                <Plus className="w-4 h-4 mr-2" />
+                Nova Atribuição
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Informações dos Dados Carregados */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Professores Disponíveis ({professores.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div>Carregando...</div>
+              ) : (
+                <div className="space-y-2 max-h-40 overflow-y-auto ultra-fast-fade">
+                  {professores.slice(0, 5).map((professor) => (
+                    <div key={professor.codigo} className="flex justify-between items-center">
+                      <span className="text-sm">{professor.nome}</span>
+                      <Badge variant={professor.status === 'Activo' ? 'default' : 'secondary'}>
+                        {professor.status}
+                      </Badge>
+                    </div>
+                  ))}
+                  {professores.length > 5 && (
+                    <div className="text-sm text-gray-500">
+                      ... e mais {professores.length - 5} professores
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Disciplinas Disponíveis ({disciplinas.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div>Carregando...</div>
+              ) : (
+                <div className="space-y-2 max-h-40 overflow-y-auto ultra-fast-fade">
+                  {disciplinas.slice(0, 5).map((disciplina) => (
+                    <div key={disciplina.codigo} className="text-sm">
+                      {disciplina.designacao}
+                    </div>
+                  ))}
+                  {disciplinas.length > 5 && (
+                    <div className="text-sm text-gray-500">
+                      ... e mais {disciplinas.length - 5} disciplinas
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Modal de Nova Atribuição */}
+        <Dialog open={showModal} onOpenChange={setShowModal}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Nova Atribuição de Professor</DialogTitle>
+            </DialogHeader>
+            
+            {message && (
+              <Alert className={message.type === 'error' ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50'}>
+                <AlertDescription className={message.type === 'error' ? 'text-red-800' : 'text-green-800'}>
+                  {message.text}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="professorId">Professor *</Label>
+                  <Select value={formData.professorId} onValueChange={(value) => handleInputChange('professorId', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o professor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {professores.filter(p => p.status === 'Activo').map(prof => (
+                        <SelectItem key={prof.codigo} value={prof.codigo.toString()}>
+                          {prof.nome} {prof.numeroFuncionario && `(${prof.numeroFuncionario})`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label htmlFor="disciplinaId">Disciplina *</Label>
+                  <Select value={formData.disciplinaId} onValueChange={(value) => handleInputChange('disciplinaId', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a disciplina" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {disciplinas.map(disc => (
+                        <SelectItem key={disc.codigo} value={disc.codigo.toString()}>
+                          {disc.designacao}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="cursoId">Curso *</Label>
+                  <Select value={formData.cursoId} onValueChange={(value) => handleInputChange('cursoId', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o curso" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cursos.map(curso => (
+                        <SelectItem key={curso.codigo} value={curso.codigo.toString()}>
+                          {curso.designacao}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="anoLectivo">Ano Letivo *</Label>
+                  <Select value={formData.anoLectivo} onValueChange={(value) => handleInputChange('anoLectivo', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o ano letivo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {anosLetivos.map(ano => (
+                        <SelectItem key={ano.codigo} value={ano.designacao}>
+                          {ano.designacao}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="md:col-span-2">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="incluirTurma"
+                      checked={formData.incluirTurma}
+                      onChange={(e) => handleInputChange('incluirTurma', e.target.checked)}
+                      className="rounded"
+                    />
+                    <Label htmlFor="incluirTurma">Incluir atribuição de turma específica</Label>
+                  </div>
+                </div>
+
+                {formData.incluirTurma && (
+                  <div className="md:col-span-2">
+                    <Label htmlFor="turmaId">Turma</Label>
+                    <Select value={formData.turmaId} onValueChange={(value) => handleInputChange('turmaId', value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a turma" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {turmas.map(turma => (
+                          <SelectItem key={turma.codigo} value={turma.codigo.toString()}>
+                            {turma.designacao}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button type="button" variant="outline" onClick={() => setShowModal(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Criar Atribuição
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+    </div>
+  );
+}

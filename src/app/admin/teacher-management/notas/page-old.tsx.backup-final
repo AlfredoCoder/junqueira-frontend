@@ -1,0 +1,579 @@
+'use client';
+
+import React, { useCallback, useState, useEffect } from 'react';
+import ProfessoresService from '@/services/professores.service';
+import NotasService from '@/services/notas.service';
+import { 
+  IProfessor, 
+  IProfessorTurma, 
+  IPeriodoAvaliacao, 
+  IAlunoBasico, 
+  INotaAluno 
+} from '@/types/professores.types';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { 
+  BookOpen, 
+  Users, 
+  Calendar, 
+  GraduationCap, 
+  FileText, 
+  Save, 
+  Eye, 
+  Edit,
+  Clock,
+  CheckCircle,
+  XCircle,
+  AlertTriangle
+} from 'lucide-react';
+
+// Remover interfaces duplicadas - usando as do arquivo de tipos
+
+export default function LancamentoNotasPage() {
+  // Estados
+  const [professores, setProfessores] = useState<IProfessor[]>([]);
+  const [professorSelecionado, setProfessorSelecionado] = useState<number | null>(null);
+  const [turmasProfessor, setTurmasProfessor] = useState<IProfessorTurma[]>([]);
+  const [turmaSelecionada, setTurmaSelecionada] = useState<IProfessorTurma | null>(null);
+  const [trimestre, setTrimestre] = useState<number>(1);
+  const [anoLectivo, setAnoLectivo] = useState<string>('2024');
+  const [periodos, setPeriodos] = useState<IPeriodoAvaliacao[]>([]);
+  const [periodoAtivo, setPeriodoAtivo] = useState<IPeriodoAvaliacao | null>(null);
+  const [alunos, setAlunos] = useState<IAlunoBasico[]>([]);
+  const [notas, setNotas] = useState<INotaAluno[]>([]);
+  const [notasEditadas, setNotasEditadas] = useState<{[key: number]: Partial<INotaAluno>}>({});
+  const [loading, setLoading] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState<string>('');
+  const [sucesso, setSucesso] = useState<string>('');
+
+  // Carregar professores ao montar o componente
+  useEffect(() => {
+    carregarProfessores();
+    carregarPeriodos();
+  }, []);
+
+  // Carregar turmas quando professor for selecionado
+  useEffect(() => {
+    if (professorSelecionado) {
+      carregarTurmasProfessor(professorSelecionado);
+    }
+  }, [professorSelecionado]);
+
+  // Carregar alunos e notas quando turma for selecionada
+  useEffect(() => {
+    if (turmaSelecionada) {
+      carregarAlunosTurma();
+      carregarNotasTurma();
+    }
+  }, [turmaSelecionada, trimestre, anoLectivo]);
+
+  const carregarProfessores = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/professores');
+      const data = await response.json();
+      
+      if (data.success) {
+        setProfessores(data.data);
+      } else {
+        setErro('Erro ao carregar professores');
+      }
+    } catch (error) {
+      setErro('Erro de conexão ao carregar professores');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const carregarPeriodos = async () => {
+    try {
+      const response = await fetch(`/api/notas/periodos?anoLectivo=${anoLectivo}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setPeriodos(data.data);
+        
+        // Encontrar período ativo
+        const hoje = new Date();
+        const periodoAtual = data.data.find((periodo: Periodo) => {
+          const inicio = new Date(periodo.dataInicio);
+          const fim = new Date(periodo.dataFim);
+          return hoje >= inicio && hoje <= fim && periodo.status === 'Activo';
+        });
+        
+        setPeriodoAtivo(periodoAtual || null);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar períodos:', error);
+    }
+  };
+
+  const carregarTurmasProfessor = async (professorId: number) => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/professores/${professorId}/turmas?anoLectivo=${anoLectivo}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setTurmasProfessor(data.data);
+      } else {
+        setErro('Erro ao carregar turmas do professor');
+      }
+    } catch (error) {
+      setErro('Erro de conexão ao carregar turmas');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const carregarAlunosTurma = async () => {
+    if (!turmaSelecionada) return;
+
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/notas/turmas/${turmaSelecionada.tb_turmas.codigo}/alunos?anoLectivo=${anoLectivo}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setAlunos(data.data);
+      } else {
+        setErro('Erro ao carregar alunos da turma');
+      }
+    } catch (error) {
+      setErro('Erro de conexão ao carregar alunos');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const carregarNotasTurma = async () => {
+    if (!turmaSelecionada) return;
+
+    try {
+      setLoading(true);
+      const response = await fetch(
+        `/api/notas/turmas/${turmaSelecionada.tb_turmas.codigo}/disciplinas/${turmaSelecionada.tb_disciplinas.codigo}/trimestres/${trimestre}?anoLectivo=${anoLectivo}`
+      );
+      const data = await response.json();
+      
+      if (data.success) {
+        setNotas(data.data);
+      } else {
+        setNotas([]);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar notas:', error);
+      setNotas([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleNotaChange = useCallback((alunoId: number, campo: string, valor: string) => {
+    const valorNumerico = valor === '' ? null : parseFloat(valor);
+    
+    setNotasEditadas(prev => ({
+      ...prev,
+      [alunoId]: {
+        ...prev[alunoId],
+        [campo]: valorNumerico
+      }
+    }));
+  };
+
+  const calcularMedia = (notaMAC?: number, notaPP?: number, notaPT?: number) => {
+    const notasValidas = [notaMAC, notaPP, notaPT].filter(nota => nota !== null && nota !== undefined);
+    
+    if (notasValidas.length === 0) return null;
+    if (notasValidas.length < 3) return null; // Só calcula se todas as notas estiverem preenchidas
+    
+    return notasValidas.reduce((sum, nota) => sum + nota!, 0) / notasValidas.length;
+  };
+
+  const obterClassificacao = (media?: number) => {
+    if (media === null || media === undefined) return 'Pendente';
+    return media >= 10 ? 'Aprovado' : 'Reprovado';
+  };
+
+  const salvarNotas = async () => {
+    if (!turmaSelecionada || !professorSelecionado || !periodoAtivo) {
+      setErro('Dados incompletos para salvar notas');
+      return;
+    }
+
+    try {
+      setSalvando(true);
+      setErro('');
+      setSucesso('');
+
+      const notasParaSalvar = Object.entries(notasEditadas).map(([alunoId, notaEditada]) => ({
+        codigo_Aluno: parseInt(alunoId),
+        ...notaEditada
+      }));
+
+      const response = await fetch('/api/notas/lancar-lote', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          codigo_Professor: professorSelecionado,
+          codigo_Disciplina: turmaSelecionada.tb_disciplinas.codigo,
+          codigo_Turma: turmaSelecionada.tb_turmas.codigo,
+          codigo_Periodo: periodoAtivo.codigo,
+          trimestre,
+          anoLectivo,
+          notas: notasParaSalvar
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setSucesso(`${data.data.sucessos} notas salvas com sucesso!`);
+        setNotasEditadas({});
+        await carregarNotasTurma(); // Recarregar notas
+      } else {
+        setErro(data.message || 'Erro ao salvar notas');
+      }
+    } catch (error) {
+      setErro('Erro de conexão ao salvar notas');
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const podeEditarTipoNota = (tipoNota: string) => {
+    if (!periodoAtivo) return false;
+    
+    switch (tipoNota) {
+      case 'MAC':
+        return periodoAtivo.tipoAvaliacao === 'MAC';
+      case 'PP':
+        return periodoAtivo.tipoAvaliacao === 'PP';
+      case 'PT':
+        return periodoAtivo.tipoAvaliacao === 'PT';
+      default:
+        return false;
+    }
+  };
+
+  const obterNotaAluno = (alunoId: number, campo: string) => {
+    // Primeiro verifica se há edição pendente
+    if (notasEditadas[alunoId] && notasEditadas[alunoId][campo as keyof Nota] !== undefined) {
+      return notasEditadas[alunoId][campo as keyof Nota] || '';
+    }
+    
+    // Senão, busca na lista de notas salvas
+    const notaSalva = notas.find(nota => nota.codigo_Aluno === alunoId);
+    return notaSalva?.[campo as keyof Nota] || '';
+  };
+
+  return (
+    <div className="container mx-auto p-6 space-y-6 ultra-fast-fade">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Lançamento de Notas</h1>
+          <p className="text-gray-600 mt-2">Sistema de avaliação - Complexo Abilio Junqueira</p>
+        </div>
+        
+        {periodoAtivo && (
+          <Badge variant="default" className="bg-[#8B4513] text-white">
+            <Clock className="w-4 h-4 mr-2" />
+            Período Ativo: {periodoAtivo.designacao}
+          </Badge>
+        )}
+      </div>
+
+      {/* Alertas */}
+      {erro && (
+        <Alert variant="destructive">
+          <XCircle className="h-4 w-4" />
+          <AlertDescription>{erro}</AlertDescription>
+        </Alert>
+      )}
+
+      {sucesso && (
+        <Alert className="border-green-200 bg-green-50">
+          <CheckCircle className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-800">{sucesso}</AlertDescription>
+        </Alert>
+      )}
+
+      {!periodoAtivo && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            Nenhum período de avaliação ativo encontrado. Entre em contato com a administração.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Seleção de Professor e Turma */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <GraduationCap className="w-5 h-5 mr-2 text-[#8B4513]" />
+            Seleção de Professor e Turma
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Seleção de Professor */}
+            <div>
+              <Label htmlFor="professor">Professor</Label>
+              <Select value={professorSelecionado?.toString() || ''} onValueChange={(value) => setProfessorSelecionado(parseInt(value))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o professor" />
+                </SelectTrigger>
+                <SelectContent>
+                  {professores.map((professor) => (
+                    <SelectItem key={professor.codigo} value={professor.codigo.toString()}>
+                      {professor.nome} - {professor.formacao}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Seleção de Trimestre */}
+            <div>
+              <Label htmlFor="trimestre">Trimestre</Label>
+              <Select value={trimestre.toString()} onValueChange={(value) => setTrimestre(parseInt(value))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1º Trimestre</SelectItem>
+                  <SelectItem value="2">2º Trimestre</SelectItem>
+                  <SelectItem value="3">3º Trimestre</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Ano Letivo */}
+            <div>
+              <Label htmlFor="anoLectivo">Ano Letivo</Label>
+              <Input
+                value={anoLectivo}
+                onChange={(e) => setAnoLectivo(e.target.value)}
+                placeholder="2024"
+              />
+            </div>
+          </div>
+
+          {/* Seleção de Turma */}
+          {turmasProfessor.length > 0 && (
+            <div>
+              <Label htmlFor="turma">Turma e Disciplina</Label>
+              <Select 
+                value={turmaSelecionada ? `${turmaSelecionada.tb_turmas.codigo}-${turmaSelecionada.tb_disciplinas.codigo}` : ''} 
+                onValueChange={(value) => {
+                  const [turmaId, disciplinaId] = value.split('-');
+                  const turma = turmasProfessor.find(t => 
+                    t.tb_turmas.codigo === parseInt(turmaId) && 
+                    t.tb_disciplinas.codigo === parseInt(disciplinaId)
+                  );
+                  setTurmaSelecionada(turma || null);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a turma e disciplina" />
+                </SelectTrigger>
+                <SelectContent>
+                  {turmasProfessor.map((turma) => (
+                    <SelectItem 
+                      key={`${turma.tb_turmas.codigo}-${turma.tb_disciplinas.codigo}`} 
+                      value={`${turma.tb_turmas.codigo}-${turma.tb_disciplinas.codigo}`}
+                    >
+                      {turma.tb_turmas.designacao} - {turma.tb_disciplinas.designacao} ({turma.tb_turmas.tb_classes.designacao})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Tabela de Lançamento de Notas */}
+      {turmaSelecionada && alunos.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center">
+                <FileText className="w-5 h-5 mr-2 text-[#8B4513]" />
+                Lançamento de Notas - {turmaSelecionada.tb_disciplinas.designacao}
+              </div>
+              <Button 
+                onClick={salvarNotas} 
+                disabled={salvando || Object.keys(notasEditadas).length === 0}
+                className="bg-[#8B4513] hover:bg-[#A0522D]"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                {salvando ? 'Salvando...' : 'Salvar Notas'}
+              </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[50px]">Nº</TableHead>
+                    <TableHead>Nome do Aluno</TableHead>
+                    <TableHead className="text-center">MAC</TableHead>
+                    <TableHead className="text-center">PP</TableHead>
+                    <TableHead className="text-center">PT</TableHead>
+                    <TableHead className="text-center">MT</TableHead>
+                    <TableHead className="text-center">Classificação</TableHead>
+                    <TableHead>Observações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {alunos.map((aluno, index) => {
+                    const notaMAC = obterNotaAluno(aluno.codigo, 'notaMAC') as number;
+                    const notaPP = obterNotaAluno(aluno.codigo, 'notaPP') as number;
+                    const notaPT = obterNotaAluno(aluno.codigo, 'notaPT') as number;
+                    const media = calcularMedia(notaMAC, notaPP, notaPT);
+                    const classificacao = obterClassificacao(media);
+
+                    return (
+                      <TableRow key={aluno.codigo}>
+                        <TableCell className="font-medium">{index + 1}</TableCell>
+                        <TableCell className="font-medium">{aluno.nome}</TableCell>
+                        
+                        {/* Nota MAC */}
+                        <TableCell className="text-center">
+                          <Input
+                            type="number"
+                            min="0"
+                            max="20"
+                            step="0.1"
+                            value={notaMAC || ''}
+                            onChange={(e) => handleNotaChange(aluno.codigo, 'notaMAC', e.target.value)}
+                            disabled={!podeEditarTipoNota('MAC')}
+                            className="w-20 text-center"
+                            placeholder="0.0"
+                          />
+                        </TableCell>
+                        
+                        {/* Nota PP */}
+                        <TableCell className="text-center">
+                          <Input
+                            type="number"
+                            min="0"
+                            max="20"
+                            step="0.1"
+                            value={notaPP || ''}
+                            onChange={(e) => handleNotaChange(aluno.codigo, 'notaPP', e.target.value)}
+                            disabled={!podeEditarTipoNota('PP')}
+                            className="w-20 text-center"
+                            placeholder="0.0"
+                          />
+                        </TableCell>
+                        
+                        {/* Nota PT */}
+                        <TableCell className="text-center">
+                          <Input
+                            type="number"
+                            min="0"
+                            max="20"
+                            step="0.1"
+                            value={notaPT || ''}
+                            onChange={(e) => handleNotaChange(aluno.codigo, 'notaPT', e.target.value)}
+                            disabled={!podeEditarTipoNota('PT')}
+                            className="w-20 text-center"
+                            placeholder="0.0"
+                          />
+                        </TableCell>
+                        
+                        {/* Média */}
+                        <TableCell className="text-center">
+                          <Badge variant={media && media >= 10 ? 'default' : 'destructive'}>
+                            {media ? media.toFixed(1) : '-'}
+                          </Badge>
+                        </TableCell>
+                        
+                        {/* Classificação */}
+                        <TableCell className="text-center">
+                          <Badge 
+                            variant={
+                              classificacao === 'Aprovado' ? 'default' : 
+                              classificacao === 'Reprovado' ? 'destructive' : 
+                              'secondary'
+                            }
+                          >
+                            {classificacao}
+                          </Badge>
+                        </TableCell>
+                        
+                        {/* Observações */}
+                        <TableCell>
+                          <Input
+                            value={obterNotaAluno(aluno.codigo, 'observacoes') as string || ''}
+                            onChange={(e) => handleNotaChange(aluno.codigo, 'observacoes', e.target.value)}
+                            placeholder="Observações..."
+                            className="w-full"
+                          />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Informações sobre períodos */}
+      {periodos.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Calendar className="w-5 h-5 mr-2 text-[#8B4513]" />
+              Períodos de Avaliação - {anoLectivo}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {periodos
+                .filter(periodo => periodo.trimestre === trimestre)
+                .map((periodo) => (
+                  <div 
+                    key={periodo.codigo} 
+                    className={`p-4 border rounded-lg ${
+                      periodo.codigo === periodoAtivo?.codigo 
+                        ? 'border-[#8B4513] bg-[#8B4513]/5' 
+                        : 'border-gray-200'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-semibold">{periodo.designacao}</h4>
+                      <Badge variant={periodo.codigo === periodoAtivo?.codigo ? 'default' : 'secondary'}>
+                        {periodo.tipoAvaliacao}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-gray-600">
+                      {new Date(periodo.dataInicio).toLocaleDateString()} - {new Date(periodo.dataFim).toLocaleDateString()}
+                    </p>
+                  </div>
+                ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}

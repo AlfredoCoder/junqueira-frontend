@@ -1,0 +1,551 @@
+'use client';
+
+import React, { useCallback, useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
+import {
+  Card, CardContent, CardHeader, CardTitle,
+} from '@/components/ui/card';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuLabel, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Users, Plus, MoreHorizontal, Edit, Trash2,
+  GraduationCap, Award, ChevronLeft, ChevronRight
+} from 'lucide-react';
+
+import StatCard from '@/components/layout/StatCard';
+import { WelcomeHeader } from '@/components/dashboard';
+
+interface Professor {
+  codigo: number;
+  nome: string;
+  numeroFuncionario?: string;
+  status: string;
+}
+
+interface Turma {
+  codigo: number;
+  designacao: string;
+}
+
+interface AnoLectivo {
+  codigo: number;
+  designacao: string;
+}
+
+interface DiretorTurma {
+  codigo: number;
+  designacao?: string;
+  codigoAnoLectivo: number;
+  codigoTurma: number;
+  codigoDocente: number;
+  tb_turmas?: {
+    designacao: string;
+  };
+  tb_docente?: {
+    nome: string;
+  };
+}
+
+export default function DiretoresTurmaPage() {
+  // Estados principais
+  const [diretores, setDiretores] = useState<DiretorTurma[]>([]);
+  const [professores, setProfessores] = useState<Professor[]>([]);
+  const [turmas, setTurmas] = useState<Turma[]>([]);
+  const [anosLetivos, setAnosLetivos] = useState<AnoLectivo[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Estados de filtros
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  
+  // Estados do modal
+  const [showModal, setShowModal] = useState(false);
+  const [editingDirector, setEditingDirector] = useState<DiretorTurma | null>(null);
+  const [formData, setFormData] = useState({
+    codigoDocente: '',
+    codigoTurma: '',
+    codigoAnoLectivo: '',
+    designacao: ''
+  });
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  
+  // Estados de estatísticas
+  const [stats, setStats] = useState({
+    totalDiretores: 0,
+    professoresAtivos: 0,
+    totalTurmas: 0,
+    totalAnosLetivos: 0
+  });
+
+  // Carregar dados iniciais
+  useEffect(() => {
+    carregarDados();
+  }, []);
+
+  const carregarDados = async () => {
+    try {
+      setLoading(true);
+      
+      console.log('Carregando dados de diretores de turma...');
+      
+      // Carregar diretores de turma
+      try {
+        const diretoresRes = await fetch('http://localhost:8000/api/academic-staff/diretores-turmas');
+        if (diretoresRes.ok) {
+          const diretoresData = await diretoresRes.json();
+          console.log('Diretores carregados:', diretoresData);
+          setDiretores(diretoresData.data || []);
+        } else {
+          console.error('Erro ao carregar diretores:', diretoresRes.status);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar diretores:', error);
+      }
+
+      // Carregar professores
+      try {
+        const professoresRes = await fetch('http://localhost:8000/api/professores');
+        if (professoresRes.ok) {
+          const professoresData = await professoresRes.json();
+          console.log('Professores carregados:', professoresData);
+          setProfessores(professoresData.data || []);
+        } else {
+          console.error('Erro ao carregar professores:', professoresRes.status);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar professores:', error);
+      }
+
+      // Carregar turmas
+      try {
+        const turmasRes = await fetch('http://localhost:8000/api/academic-management/turmas');
+        if (turmasRes.ok) {
+          const turmasData = await turmasRes.json();
+          console.log('Turmas carregadas:', turmasData);
+          setTurmas(turmasData.data || []);
+        } else {
+          console.error('Erro ao carregar turmas:', turmasRes.status);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar turmas:', error);
+      }
+
+      // Carregar anos letivos
+      try {
+        const anosLetivosRes = await fetch('http://localhost:8000/api/academic-management/anos-lectivos');
+        if (anosLetivosRes.ok) {
+          const anosLetivosData = await anosLetivosRes.json();
+          console.log('Anos letivos carregados:', anosLetivosData);
+          setAnosLetivos(anosLetivosData.data || []);
+        } else {
+          console.error('Erro ao carregar anos letivos:', anosLetivosRes.status);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar anos letivos:', error);
+      }
+
+    } catch (error) {
+      console.error('Erro geral ao carregar dados:', error);
+      toast.error('Erro ao carregar dados');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Calcular estatísticas quando os dados mudarem
+  useEffect(() => {
+    const totalDiretores = diretores.length;
+    const professoresAtivos = professores.filter(p => p.status === 'Activo').length;
+    const totalTurmas = turmas.length;
+    const totalAnosLetivos = anosLetivos.length;
+    
+    setStats({ totalDiretores, professoresAtivos, totalTurmas, totalAnosLetivos });
+  }, [diretores, professores, turmas, anosLetivos]);
+
+  // Filtrar diretores
+  const diretoresFiltrados = diretores.filter(diretor => {
+    const nomeDocente = diretor.tb_docente?.nome || '';
+    const nomeTurma = diretor.tb_turmas?.designacao || '';
+    const designacao = diretor.designacao || '';
+    
+    return nomeDocente.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           nomeTurma.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           designacao.toLowerCase().includes(searchTerm.toLowerCase());
+  });
+
+  // Paginação
+  const totalPages = Math.ceil(diretoresFiltrados.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const diretoresPaginados = diretoresFiltrados.slice(startIndex, startIndex + itemsPerPage);
+
+  // Handlers do formulário
+  const handleInputChange = useCallback((field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      const url = editingDirector 
+        ? `http://localhost:8000/api/academic-staff/diretores-turmas/${editingDirector.codigo}`
+        : 'http://localhost:8000/api/academic-staff/diretores-turmas';
+      
+      const method = editingDirector ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          codigoDocente: parseInt(formData.codigoDocente),
+          codigoTurma: parseInt(formData.codigoTurma),
+          codigoAnoLectivo: parseInt(formData.codigoAnoLectivo),
+          designacao: formData.designacao
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          toast.success(editingDirector ? 'Diretor atualizado com sucesso!' : 'Diretor criado com sucesso!');
+          setShowModal(false);
+          resetForm();
+          carregarDados();
+        } else {
+          setMessage({ type: 'error', text: data.message || 'Erro ao salvar diretor' });
+        }
+      } else {
+        setMessage({ type: 'error', text: 'Erro ao salvar diretor' });
+      }
+
+    } catch (error) {
+      console.error('Erro ao salvar diretor:', error);
+      setMessage({ type: 'error', text: 'Erro de conexão' });
+    }
+  };
+
+  const handleEdit = useCallback((diretor: DiretorTurma) => {
+    setEditingDirector(diretor);
+    setFormData({
+      codigoDocente: diretor.codigoDocente.toString(),
+      codigoTurma: diretor.codigoTurma.toString(),
+      codigoAnoLectivo: diretor.codigoAnoLectivo.toString(),
+      designacao: diretor.designacao || ''
+    });
+    setShowModal(true);
+  };
+
+  const handleDelete = async (diretor: DiretorTurma) => {
+    if (!confirm(`Tem certeza que deseja excluir este diretor de turma?`)) return;
+    
+    try {
+      const response = await fetch(`http://localhost:8000/api/academic-staff/diretores-turmas/${diretor.codigo}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        toast.success('Diretor excluído com sucesso!');
+        carregarDados();
+      } else {
+        const data = await response.json();
+        toast.error(data.message || 'Erro ao excluir diretor');
+      }
+    } catch (error) {
+      console.error('Erro ao excluir diretor:', error);
+      toast.error('Erro de conexão');
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      codigoDocente: '',
+      codigoTurma: '',
+      codigoAnoLectivo: '',
+      designacao: ''
+    });
+    setEditingDirector(null);
+    setMessage(null);
+  };
+
+  const openNewModal = () => {
+    resetForm();
+    setShowModal(true);
+  };
+
+  return (
+    <div className="space-y-6 ultra-fast-fade">
+        {/* Header */}
+        <WelcomeHeader 
+          title="Diretores de Turma"
+        />
+
+        {/* Estatísticas */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <StatCard
+            title="Total de Diretores"
+            value={stats.totalDiretores.toString()}
+            icon={Users}
+            change="0"
+            changeType="up"
+            color="text-blue-600"
+            bgColor="bg-blue-50"
+            accentColor="border-blue-200"
+          />
+          <StatCard
+            title="Professores Ativos"
+            value={stats.professoresAtivos.toString()}
+            icon={GraduationCap}
+            change="0"
+            changeType="up"
+            color="text-green-600"
+            bgColor="bg-green-50"
+            accentColor="border-green-200"
+          />
+          <StatCard
+            title="Total de Turmas"
+            value={stats.totalTurmas.toString()}
+            icon={Award}
+            change="0"
+            changeType="up"
+            color="text-purple-600"
+            bgColor="bg-purple-50"
+            accentColor="border-purple-200"
+          />
+          <StatCard
+            title="Anos Letivos"
+            value={stats.totalAnosLetivos.toString()}
+            icon={Award}
+            change="0"
+            changeType="up"
+            color="text-orange-600"
+            bgColor="bg-orange-50"
+            accentColor="border-orange-200"
+          />
+        </div>
+
+        {/* Filtros e Busca */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Filtros</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Buscar</Label>
+                <Input
+                  placeholder="Professor, turma..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <div className="flex items-end">
+                <Button onClick={openNewModal} className="w-full">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Novo Diretor de Turma
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Tabela de Diretores */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Lista de Diretores de Turma ({diretoresFiltrados.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="text-center py-8">Carregando...</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Professor</TableHead>
+                      <TableHead>Turma</TableHead>
+                      <TableHead>Ano Letivo</TableHead>
+                      <TableHead>Designação</TableHead>
+                      <TableHead>Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {diretoresPaginados.map((diretor) => (
+                      <TableRow key={diretor.codigo}>
+                        <TableCell className="font-medium">
+                          {diretor.tb_docente?.nome || 'Professor não encontrado'}
+                        </TableCell>
+                        <TableCell>
+                          {diretor.tb_turmas?.designacao || 'Turma não encontrada'}
+                        </TableCell>
+                        <TableCell>
+                          {anosLetivos.find(ano => ano.codigo === diretor.codigoAnoLectivo)?.designacao || diretor.codigoAnoLectivo}
+                        </TableCell>
+                        <TableCell>{diretor.designacao || '-'}</TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                              <DropdownMenuItem onClick={() => handleEdit(diretor)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleDelete(diretor)}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Excluir
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+
+            {/* Paginação */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-4">
+                <div className="text-sm text-gray-600">
+                  Mostrando {startIndex + 1} a {Math.min(startIndex + itemsPerPage, diretoresFiltrados.length)} de {diretoresFiltrados.length} diretores
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <span className="text-sm">
+                    Página {currentPage} de {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Modal de Novo/Editar Diretor */}
+        <Dialog open={showModal} onOpenChange={setShowModal}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>
+                {editingDirector ? 'Editar Diretor de Turma' : 'Novo Diretor de Turma'}
+              </DialogTitle>
+            </DialogHeader>
+            
+            {message && (
+              <Alert className={message.type === 'error' ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50'}>
+                <AlertDescription className={message.type === 'error' ? 'text-red-800' : 'text-green-800'}>
+                  {message.text}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="codigoDocente">Professor *</Label>
+                  <Select value={formData.codigoDocente} onValueChange={(value) => handleInputChange('codigoDocente', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o professor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {professores.filter(p => p.status === 'Activo').map(prof => (
+                        <SelectItem key={prof.codigo} value={prof.codigo.toString()}>
+                          {prof.nome} {prof.numeroFuncionario && `(${prof.numeroFuncionario})`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label htmlFor="codigoTurma">Turma *</Label>
+                  <Select value={formData.codigoTurma} onValueChange={(value) => handleInputChange('codigoTurma', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a turma" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {turmas.map(turma => (
+                        <SelectItem key={turma.codigo} value={turma.codigo.toString()}>
+                          {turma.designacao}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="codigoAnoLectivo">Ano Letivo *</Label>
+                  <Select value={formData.codigoAnoLectivo} onValueChange={(value) => handleInputChange('codigoAnoLectivo', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o ano letivo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {anosLetivos.map(ano => (
+                        <SelectItem key={ano.codigo} value={ano.codigo.toString()}>
+                          {ano.designacao}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="designacao">Designação</Label>
+                  <Input
+                    id="designacao"
+                    value={formData.designacao}
+                    onChange={(e) => handleInputChange('designacao', e.target.value)}
+                    placeholder="Designação opcional"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button type="button" variant="outline" onClick={() => setShowModal(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit">
+                  <Plus className="w-4 h-4 mr-2" />
+                  {editingDirector ? 'Atualizar' : 'Criar'} Diretor
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+    </div>
+  );
+}

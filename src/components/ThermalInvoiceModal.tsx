@@ -1,0 +1,56 @@
+import React, { useCallback } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import ThermalInvoice, { ThermalInvoiceData } from './ThermalInvoice';
+import { ThermalInvoiceService } from '@/services/thermalInvoiceService';
+
+interface ThermalInvoiceModalProps {
+  open: boolean;
+  onClose: () => void;
+  data: ThermalInvoiceData | null;
+}
+
+export default function ThermalInvoiceModal({ 
+  open, 
+  onClose, 
+  data 
+}: ThermalInvoiceModalProps) {
+  if (!data) return null;
+
+  const handleDownloadPDF = useCallback(() => {
+    try {
+      ThermalInvoiceService.generateThermalPDF(data);
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+    }
+  }, []);
+  const handlePrint = useCallback(() => {
+    try {
+      ThermalInvoiceService.printThermalInvoice();
+    } catch (error) {
+      console.error('Erro ao imprimir:', error);
+    }
+  }, []);
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Fatura de Pagamento</DialogTitle>
+        </DialogHeader>
+        
+        <div className="mt-4">
+          <ThermalInvoice 
+            data={data} 
+            onPrint={handlePrint}
+            onDownload={handleDownloadPDF}
+            showActions={true}
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
