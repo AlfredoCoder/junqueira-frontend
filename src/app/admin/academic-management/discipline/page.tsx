@@ -123,8 +123,8 @@ export default function DisciplinasOptimized() {
       setLoading(true);
       
       const [disciplinasRes, cursosRes] = await Promise.all([
-        fetch('${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/disciplinas'),
-        fetch('${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/cursos')
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/disciplinas`),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/cursos`)
       ]);
 
       if (disciplinasRes.ok) {
@@ -192,7 +192,7 @@ export default function DisciplinasOptimized() {
     try {
       const url = editingDisciplina 
         ? `${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/disciplinas/${editingDisciplina.codigo}`
-        : '${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/disciplinas';
+        : `${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/disciplinas`;
       
       const method = editingDisciplina ? 'PUT' : 'POST';
       
@@ -276,8 +276,8 @@ export default function DisciplinasOptimized() {
   const carregarTurmasEClasses = useCallback(async () => {
     try {
       const [turmasRes, classesRes] = await Promise.all([
-        fetch('${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/turmas'),
-        fetch('${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/classes')
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/turmas`),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/classes`)
       ]);
 
       if (turmasRes.ok && classesRes.ok) {
@@ -310,7 +310,7 @@ export default function DisciplinasOptimized() {
     try {
       setLoadingGrade(true);
       
-      const response = await fetch('${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/grade-curricular', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/grade-curricular`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -345,7 +345,7 @@ export default function DisciplinasOptimized() {
   const carregarGradesCurriculares = useCallback(async () => {
     try {
       setLoadingGrades(true);
-      const response = await fetch('${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/grade-curricular');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/grade-curricular`);
       
       if (response.ok) {
         const data = await response.json();
