@@ -97,7 +97,6 @@ const menuItems: MenuItem[] = [
     title: "Configurações",
     icon: Settings,
     children: [
-      { title: "Dados Institucionais", icon: Building, href: "/admin/settings-management/instituicao" },
       { title: "Ano Letivo", icon: Calendar, href: "/admin/settings-management/ano-letivo" },
       { title: "Usuários", icon: UserCog, href: "/admin/settings-management/usuarios" },
       { title: "Períodos de Lançamento", icon: Calendar, href: "/admin/settings-management/periodos-lancamento" }
