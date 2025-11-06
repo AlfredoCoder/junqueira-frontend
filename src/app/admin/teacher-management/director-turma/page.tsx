@@ -103,7 +103,7 @@ export default function DiretoresTurmaPage() {
       
       // Carregar diretores de turma
       try {
-        const diretoresRes = await fetch('http://localhost:8000/api/academic-staff/diretores-turmas');
+        const diretoresRes = await fetch('${process.env.NEXT_PUBLIC_API_URL}/api/academic-staff/diretores-turmas');
         if (diretoresRes.ok) {
           const diretoresData = await diretoresRes.json();
           console.log('Diretores carregados:', diretoresData);
@@ -117,7 +117,7 @@ export default function DiretoresTurmaPage() {
 
       // Carregar professores
       try {
-        const professoresRes = await fetch('http://localhost:8000/api/professores');
+        const professoresRes = await fetch('${process.env.NEXT_PUBLIC_API_URL}/api/professores');
         if (professoresRes.ok) {
           const professoresData = await professoresRes.json();
           console.log('Professores carregados:', professoresData);
@@ -131,7 +131,7 @@ export default function DiretoresTurmaPage() {
 
       // Carregar turmas
       try {
-        const turmasRes = await fetch('http://localhost:8000/api/academic-management/turmas');
+        const turmasRes = await fetch('${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/turmas');
         if (turmasRes.ok) {
           const turmasData = await turmasRes.json();
           console.log('Turmas carregadas:', turmasData);
@@ -145,7 +145,7 @@ export default function DiretoresTurmaPage() {
 
       // Carregar anos letivos
       try {
-        const anosLetivosRes = await fetch('http://localhost:8000/api/academic-management/anos-lectivos');
+        const anosLetivosRes = await fetch('${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/anos-lectivos');
         if (anosLetivosRes.ok) {
           const anosLetivosData = await anosLetivosRes.json();
           console.log('Anos letivos carregados:', anosLetivosData);
@@ -200,8 +200,8 @@ export default function DiretoresTurmaPage() {
     
     try {
       const url = editingDirector 
-        ? `http://localhost:8000/api/academic-staff/diretores-turmas/${editingDirector.codigo}`
-        : 'http://localhost:8000/api/academic-staff/diretores-turmas';
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/academic-staff/diretores-turmas/${editingDirector.codigo}`
+        : '${process.env.NEXT_PUBLIC_API_URL}/api/academic-staff/diretores-turmas';
       
       const method = editingDirector ? 'PUT' : 'POST';
       
@@ -250,7 +250,7 @@ export default function DiretoresTurmaPage() {
     if (!confirm(`Tem certeza que deseja excluir este diretor de turma?`)) return;
     
     try {
-      const response = await fetch(`http://localhost:8000/api/academic-staff/diretores-turmas/${diretor.codigo}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/academic-staff/diretores-turmas/${diretor.codigo}`, {
         method: 'DELETE'
       });
 

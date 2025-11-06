@@ -123,8 +123,8 @@ export default function DisciplinasOptimized() {
       setLoading(true);
       
       const [disciplinasRes, cursosRes] = await Promise.all([
-        fetch('http://localhost:8000/api/academic-management/disciplinas'),
-        fetch('http://localhost:8000/api/academic-management/cursos')
+        fetch('${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/disciplinas'),
+        fetch('${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/cursos')
       ]);
 
       if (disciplinasRes.ok) {
@@ -191,8 +191,8 @@ export default function DisciplinasOptimized() {
     
     try {
       const url = editingDisciplina 
-        ? `http://localhost:8000/api/academic-management/disciplinas/${editingDisciplina.codigo}`
-        : 'http://localhost:8000/api/academic-management/disciplinas';
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/disciplinas/${editingDisciplina.codigo}`
+        : '${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/disciplinas';
       
       const method = editingDisciplina ? 'PUT' : 'POST';
       
@@ -241,7 +241,7 @@ export default function DisciplinasOptimized() {
     if (!confirm(`Tem certeza que deseja excluir a disciplina "${disciplina.designacao}"?`)) return;
     
     try {
-      const response = await fetch(`http://localhost:8000/api/academic-management/disciplinas/${disciplina.codigo}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/disciplinas/${disciplina.codigo}`, {
         method: 'DELETE'
       });
 
@@ -276,8 +276,8 @@ export default function DisciplinasOptimized() {
   const carregarTurmasEClasses = useCallback(async () => {
     try {
       const [turmasRes, classesRes] = await Promise.all([
-        fetch('http://localhost:8000/api/academic-management/turmas'),
-        fetch('http://localhost:8000/api/academic-management/classes')
+        fetch('${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/turmas'),
+        fetch('${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/classes')
       ]);
 
       if (turmasRes.ok && classesRes.ok) {
@@ -310,7 +310,7 @@ export default function DisciplinasOptimized() {
     try {
       setLoadingGrade(true);
       
-      const response = await fetch('http://localhost:8000/api/academic-management/grade-curricular', {
+      const response = await fetch('${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/grade-curricular', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -345,7 +345,7 @@ export default function DisciplinasOptimized() {
   const carregarGradesCurriculares = useCallback(async () => {
     try {
       setLoadingGrades(true);
-      const response = await fetch('http://localhost:8000/api/academic-management/grade-curricular');
+      const response = await fetch('${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/grade-curricular');
       
       if (response.ok) {
         const data = await response.json();
@@ -385,7 +385,7 @@ export default function DisciplinasOptimized() {
     try {
       // Remover todas as disciplinas da grade
       const promises = grade.disciplinas?.map(disciplina => 
-        fetch(`http://localhost:8000/api/academic-management/grade-curricular/${disciplina.codigo}`, {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/grade-curricular/${disciplina.codigo}`, {
           method: 'DELETE'
         })
       ) || [];

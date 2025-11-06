@@ -55,7 +55,7 @@ export default function TransfersPage() {
       
       // Tentar carregar do backend
       try {
-        const response = await fetch('http://localhost:8000/api/transfers');
+        const response = await fetch('${process.env.NEXT_PUBLIC_API_URL}/api/transfers');
         if (response.ok) {
           const data = await response.json();
           setTransfers(data.data || []);

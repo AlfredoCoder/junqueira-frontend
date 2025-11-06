@@ -103,12 +103,12 @@ export default function AtribuicoesProfessoresPage() {
       
       // Carregar dados em paralelo com tratamento individual de erros
       const urls = [
-        { name: 'atribuicoesDisciplinas', url: 'http://localhost:8000/api/professor-disciplinas' },
-        { name: 'atribuicoesTurmas', url: 'http://localhost:8000/api/professor-turmas' },
-        { name: 'professores', url: 'http://localhost:8000/api/professores' },
-        { name: 'disciplinas', url: 'http://localhost:8000/api/academic-management/disciplinas' },
-        { name: 'cursos', url: 'http://localhost:8000/api/academic-management/cursos' },
-        { name: 'turmas', url: 'http://localhost:8000/api/academic-management/turmas' }
+        { name: 'atribuicoesDisciplinas', url: '${process.env.NEXT_PUBLIC_API_URL}/api/professor-disciplinas' },
+        { name: 'atribuicoesTurmas', url: '${process.env.NEXT_PUBLIC_API_URL}/api/professor-turmas' },
+        { name: 'professores', url: '${process.env.NEXT_PUBLIC_API_URL}/api/professores' },
+        { name: 'disciplinas', url: '${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/disciplinas' },
+        { name: 'cursos', url: '${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/cursos' },
+        { name: 'turmas', url: '${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/turmas' }
       ];
 
       const responses = await Promise.all(
@@ -248,7 +248,7 @@ export default function AtribuicoesProfessoresPage() {
     
     try {
       // Criar atribuição de disciplina usando a API do controlador de professores
-      const disciplinaResponse = await fetch(`http://localhost:8000/api/professores/${formData.professorId}/disciplinas`, {
+      const disciplinaResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/professores/${formData.professorId}/disciplinas`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -267,7 +267,7 @@ export default function AtribuicoesProfessoresPage() {
 
       // Se incluir turma, criar atribuição de turma também
       if (formData.incluirTurma && formData.turmaId) {
-        const turmaResponse = await fetch(`http://localhost:8000/api/professores/${formData.professorId}/turmas`, {
+        const turmaResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/professores/${formData.professorId}/turmas`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -301,8 +301,8 @@ export default function AtribuicoesProfessoresPage() {
     
     try {
       const endpoint = atribuicao.tipo === 'disciplina' 
-        ? `http://localhost:8000/api/professor-disciplinas/${atribuicao.codigo}`
-        : `http://localhost:8000/api/professor-turmas/${atribuicao.codigo}`;
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/professor-disciplinas/${atribuicao.codigo}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/api/professor-turmas/${atribuicao.codigo}`;
 
       const response = await fetch(endpoint, { method: 'DELETE' });
 

@@ -128,14 +128,14 @@ export default function LancamentoNotasUnificado() {
       setLoading(true);
       
       // Carregar professores
-      const professoresRes = await fetch('http://localhost:8000/api/professores');
+      const professoresRes = await fetch('${process.env.NEXT_PUBLIC_API_URL}/api/professores');
       if (professoresRes.ok) {
         const professoresData = await professoresRes.json();
         setProfessores(professoresData.data || []);
       }
 
       // Carregar anos letivos
-      const anosRes = await fetch('http://localhost:8000/api/academic-management/anos-lectivos');
+      const anosRes = await fetch('${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/anos-lectivos');
       if (anosRes.ok) {
         const anosData = await anosRes.json();
         setAnosLetivos(anosData.data || []);
@@ -155,7 +155,7 @@ export default function LancamentoNotasUnificado() {
     try {
       setLoading(true);
       const response = await fetch(
-        `http://localhost:8000/api/grade-curricular/professor/${professorSelecionado}/turmas-disciplinas?anoLectivo=${anoLetivoSelecionado}`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/grade-curricular/professor/${professorSelecionado}/turmas-disciplinas?anoLectivo=${anoLetivoSelecionado}`
       );
       
       if (response.ok) {
@@ -181,7 +181,7 @@ export default function LancamentoNotasUnificado() {
     try {
       setLoading(true);
       const response = await fetch(
-        `http://localhost:8000/api/grade-curricular/turma/${turmaSelecionada.codigo}/alunos-confirmados?anoLectivo=${anoLetivoSelecionado}`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/grade-curricular/turma/${turmaSelecionada.codigo}/alunos-confirmados?anoLectivo=${anoLetivoSelecionado}`
       );
       
       if (response.ok) {
@@ -203,7 +203,7 @@ export default function LancamentoNotasUnificado() {
     
     try {
       const response = await fetch(
-        `http://localhost:8000/api/notas/turmas/${turmaSelecionada.codigo}/disciplinas/${disciplinaSelecionada}/trimestres/${trimestre}?anoLectivo=${anoLetivoSelecionado}`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/notas/turmas/${turmaSelecionada.codigo}/disciplinas/${disciplinaSelecionada}/trimestres/${trimestre}?anoLectivo=${anoLetivoSelecionado}`
       );
       
       if (response.ok) {
@@ -263,7 +263,7 @@ export default function LancamentoNotasUnificado() {
         notaFinal: calcularNotaFinal(nota.notaMAC, nota.notaPP, nota.notaPT)
       }));
 
-      const response = await fetch('http://localhost:8000/api/notas/lancar', {
+      const response = await fetch('${process.env.NEXT_PUBLIC_API_URL}/api/notas/lancar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

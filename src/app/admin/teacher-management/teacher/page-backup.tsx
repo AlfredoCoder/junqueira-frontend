@@ -102,7 +102,7 @@ export default function ProfessoresPage() {
   const carregarProfessores = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:8000/api/professores');
+      const response = await fetch('${process.env.NEXT_PUBLIC_API_URL}/api/professores');
       const data = await response.json();
       
       if (data.success) {
@@ -154,8 +154,8 @@ export default function ProfessoresPage() {
     
     try {
       const url = editingProfessor 
-        ? `http://localhost:8000/api/professores/${editingProfessor.codigo}`
-        : 'http://localhost:8000/api/professores';
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/professores/${editingProfessor.codigo}`
+        : '${process.env.NEXT_PUBLIC_API_URL}/api/professores';
       
       const method = editingProfessor ? 'PUT' : 'POST';
       
@@ -202,7 +202,7 @@ export default function ProfessoresPage() {
     if (!confirm(`Tem certeza que deseja excluir o professor ${professor.nome}?`)) return;
     
     try {
-      const response = await fetch(`http://localhost:8000/api/professores/${professor.codigo}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/professores/${professor.codigo}`, {
         method: 'DELETE',
       });
 
