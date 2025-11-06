@@ -103,12 +103,12 @@ export default function AtribuicoesProfessoresPage() {
       
       // Carregar dados em paralelo com tratamento individual de erros
       const urls = [
-        { name: 'atribuicoesDisciplinas', url: '${process.env.NEXT_PUBLIC_API_URL}/api/professor-disciplinas' },
-        { name: 'atribuicoesTurmas', url: '${process.env.NEXT_PUBLIC_API_URL}/api/professor-turmas' },
-        { name: 'professores', url: '${process.env.NEXT_PUBLIC_API_URL}/api/professores' },
-        { name: 'disciplinas', url: '${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/disciplinas' },
-        { name: 'cursos', url: '${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/cursos' },
-        { name: 'turmas', url: '${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/turmas' }
+        { name: 'atribuicoesDisciplinas', url: `${process.env.NEXT_PUBLIC_API_URL}/api/professor-disciplinas` },
+        { name: 'atribuicoesTurmas', url: `${process.env.NEXT_PUBLIC_API_URL}/api/professor-turmas` },
+        { name: 'professores', url: `${process.env.NEXT_PUBLIC_API_URL}/api/professores` },
+        { name: 'disciplinas', url: `${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/disciplinas` },
+        { name: 'cursos', url: `${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/cursos` },
+        { name: 'turmas', url: `${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/turmas` }
       ];
 
       const responses = await Promise.all(

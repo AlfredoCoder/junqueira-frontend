@@ -173,7 +173,7 @@ export default function SalasPage() {
         setShowEditModal(false);
       } else {
         // Criar sala
-        const response = await fetch('${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/salas', {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/salas`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

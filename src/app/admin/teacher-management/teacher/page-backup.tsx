@@ -102,7 +102,7 @@ export default function ProfessoresPage() {
   const carregarProfessores = async () => {
     try {
       setLoading(true);
-      const response = await fetch('${process.env.NEXT_PUBLIC_API_URL}/api/professores');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/professores`);
       const data = await response.json();
       
       if (data.success) {
@@ -155,7 +155,7 @@ export default function ProfessoresPage() {
     try {
       const url = editingProfessor 
         ? `${process.env.NEXT_PUBLIC_API_URL}/api/professores/${editingProfessor.codigo}`
-        : '${process.env.NEXT_PUBLIC_API_URL}/api/professores';
+        : `${process.env.NEXT_PUBLIC_API_URL}/api/professores`;
       
       const method = editingProfessor ? 'PUT' : 'POST';
       

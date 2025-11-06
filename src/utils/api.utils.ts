@@ -2,7 +2,7 @@ import axios from "axios";
 
 const api = axios.create({
   // Usar variável de ambiente ou fallback para desenvolvimento
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL}",
+  baseURL: process.env.NEXT_PUBLIC_API_URL || `${process.env.NEXT_PUBLIC_API_URL}`,
   headers: {
     "Content-Type": "application/json",
   },

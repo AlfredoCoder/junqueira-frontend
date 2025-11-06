@@ -103,7 +103,7 @@ export default function DiretoresTurmaPage() {
       
       // Carregar diretores de turma
       try {
-        const diretoresRes = await fetch('${process.env.NEXT_PUBLIC_API_URL}/api/academic-staff/diretores-turmas');
+        const diretoresRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/academic-staff/diretores-turmas`);
         if (diretoresRes.ok) {
           const diretoresData = await diretoresRes.json();
           console.log('Diretores carregados:', diretoresData);
@@ -117,7 +117,7 @@ export default function DiretoresTurmaPage() {
 
       // Carregar professores
       try {
-        const professoresRes = await fetch('${process.env.NEXT_PUBLIC_API_URL}/api/professores');
+        const professoresRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/professores`);
         if (professoresRes.ok) {
           const professoresData = await professoresRes.json();
           console.log('Professores carregados:', professoresData);
@@ -131,7 +131,7 @@ export default function DiretoresTurmaPage() {
 
       // Carregar turmas
       try {
-        const turmasRes = await fetch('${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/turmas');
+        const turmasRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/turmas`);
         if (turmasRes.ok) {
           const turmasData = await turmasRes.json();
           console.log('Turmas carregadas:', turmasData);
@@ -145,7 +145,7 @@ export default function DiretoresTurmaPage() {
 
       // Carregar anos letivos
       try {
-        const anosLetivosRes = await fetch('${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/anos-lectivos');
+        const anosLetivosRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/anos-lectivos`);
         if (anosLetivosRes.ok) {
           const anosLetivosData = await anosLetivosRes.json();
           console.log('Anos letivos carregados:', anosLetivosData);
@@ -201,7 +201,7 @@ export default function DiretoresTurmaPage() {
     try {
       const url = editingDirector 
         ? `${process.env.NEXT_PUBLIC_API_URL}/api/academic-staff/diretores-turmas/${editingDirector.codigo}`
-        : '${process.env.NEXT_PUBLIC_API_URL}/api/academic-staff/diretores-turmas';
+        : `${process.env.NEXT_PUBLIC_API_URL}/api/academic-staff/diretores-turmas`;
       
       const method = editingDirector ? 'PUT' : 'POST';
       

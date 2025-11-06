@@ -128,14 +128,14 @@ export default function LancamentoNotasUnificado() {
       setLoading(true);
       
       // Carregar professores
-      const professoresRes = await fetch('${process.env.NEXT_PUBLIC_API_URL}/api/professores');
+      const professoresRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/professores`);
       if (professoresRes.ok) {
         const professoresData = await professoresRes.json();
         setProfessores(professoresData.data || []);
       }
 
       // Carregar anos letivos
-      const anosRes = await fetch('${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/anos-lectivos');
+      const anosRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/anos-lectivos`);
       if (anosRes.ok) {
         const anosData = await anosRes.json();
         setAnosLetivos(anosData.data || []);
@@ -263,7 +263,7 @@ export default function LancamentoNotasUnificado() {
         notaFinal: calcularNotaFinal(nota.notaMAC, nota.notaPP, nota.notaPT)
       }));
 
-      const response = await fetch('${process.env.NEXT_PUBLIC_API_URL}/api/notas/lancar', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/notas/lancar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
