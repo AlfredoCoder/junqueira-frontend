@@ -174,8 +174,8 @@ export default function NotaDetailsPage() {
 
   return (
     <div className="space-y-6 ultra-fast-fade">
-      {/* Header */}
-      <div className= gpu-accelerated instant-hover"relative overflow-hidden rounded-2xl bg-card border p-8 mb-8 shadow-sm">
+  {/* Header */}
+  <div className="gpu-accelerated instant-hover relative overflow-hidden rounded-2xl bg-card border p-8 mb-8 shadow-sm">
         <div className="relative z-10">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-6 lg:space-y-0 ultra-fast-fade">
             <div className="space-y-3 ultra-fast-fade">
