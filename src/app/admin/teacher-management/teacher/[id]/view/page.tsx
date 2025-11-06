@@ -52,7 +52,7 @@ export default function ViewTeacherPage() {
   const fetchProfessor = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:8000/api/professores/${professorId}`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/professores/${professorId}`);
       
       if (response.ok) {
         const data = await response.json();

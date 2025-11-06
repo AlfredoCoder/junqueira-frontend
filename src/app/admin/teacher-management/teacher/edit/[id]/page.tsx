@@ -34,7 +34,7 @@ export default function EditTeacherPage() {
   const fetchProfessor = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:8000/api/professores/${teacherId}`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/professores/${teacherId}`);
       
       if (response.ok) {
         const data = await response.json();
@@ -77,7 +77,7 @@ export default function EditTeacherPage() {
 
     try {
       setSaving(true);
-      const response = await fetch(`http://localhost:8000/api/professores/${teacherId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/professores/${teacherId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

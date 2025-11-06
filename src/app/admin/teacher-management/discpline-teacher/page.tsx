@@ -99,7 +99,7 @@ export default function AtribuicoesProfessoresPage() {
       
       // Carregar professores
       try {
-        const professoresRes = await fetch('http://localhost:8000/api/professores');
+        const professoresRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/professores`);
         if (professoresRes.ok) {
           const professoresData = await professoresRes.json();
           console.log('Professores carregados:', professoresData);
@@ -113,7 +113,7 @@ export default function AtribuicoesProfessoresPage() {
 
       // Carregar disciplinas
       try {
-        const disciplinasRes = await fetch('http://localhost:8000/api/academic-management/disciplinas');
+        const disciplinasRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/disciplinas`);
         if (disciplinasRes.ok) {
           const disciplinasData = await disciplinasRes.json();
           console.log('Disciplinas carregadas:', disciplinasData);
@@ -127,7 +127,7 @@ export default function AtribuicoesProfessoresPage() {
 
       // Carregar cursos
       try {
-        const cursosRes = await fetch('http://localhost:8000/api/academic-management/cursos');
+        const cursosRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/cursos`);
         if (cursosRes.ok) {
           const cursosData = await cursosRes.json();
           console.log('Cursos carregados:', cursosData);
@@ -141,7 +141,7 @@ export default function AtribuicoesProfessoresPage() {
 
       // Carregar turmas
       try {
-        const turmasRes = await fetch('http://localhost:8000/api/academic-management/turmas');
+        const turmasRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/turmas`);
         if (turmasRes.ok) {
           const turmasData = await turmasRes.json();
           console.log('Turmas carregadas:', turmasData);
@@ -155,7 +155,7 @@ export default function AtribuicoesProfessoresPage() {
 
       // Carregar anos letivos
       try {
-        const anosLetivosRes = await fetch('http://localhost:8000/api/academic-management/anos-lectivos');
+        const anosLetivosRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/anos-lectivos`);
         if (anosLetivosRes.ok) {
           const anosLetivosData = await anosLetivosRes.json();
           console.log('Anos letivos carregados:', anosLetivosData);
@@ -211,7 +211,7 @@ export default function AtribuicoesProfessoresPage() {
 
       console.log('Enviando atribuição:', atribuicaoData);
 
-      const response = await fetch('http://localhost:8000/api/atribuicao-completa', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/atribuicao-completa`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(atribuicaoData),

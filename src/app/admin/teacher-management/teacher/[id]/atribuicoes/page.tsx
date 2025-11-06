@@ -84,7 +84,7 @@ export default function AtribuicoesProfessorPage() {
 
   const fetchProfessor = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/api/professores/${professorId}`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/professores/${professorId}`);
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
@@ -99,7 +99,7 @@ export default function AtribuicoesProfessorPage() {
   const fetchAtribuicoes = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:8000/api/atribuicoes-professor/${professorId}`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/atribuicoes-professor/${professorId}`);
       
       if (response.ok) {
         const data = await response.json();
@@ -127,8 +127,8 @@ export default function AtribuicoesProfessorPage() {
 
     try {
       const endpoint = tipo === 'disciplina' 
-        ? `http://localhost:8000/api/professores/${professorId}/disciplinas/${codigo}`
-        : `http://localhost:8000/api/professores/${professorId}/turmas/${codigo}`;
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/professores/${professorId}/disciplinas/${codigo}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/api/professores/${professorId}/turmas/${codigo}`;
 
       const response = await fetch(endpoint, {
         method: 'DELETE',
