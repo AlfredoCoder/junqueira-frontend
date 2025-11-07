@@ -58,7 +58,7 @@ export function UserModal({
     user: '',
     passe: '',
     codigo_Tipo_Utilizador: 0,
-    estadoActual: 'Activo'
+    estadoActual: 'ACTIVO'
   })
   const [showPassword, setShowPassword] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -86,7 +86,7 @@ export function UserModal({
           user: '',
           passe: '',
           codigo_Tipo_Utilizador: 0,
-          estadoActual: 'Activo'
+          estadoActual: 'ACTIVO'
         })
       }
       setErrors({})
@@ -311,8 +311,8 @@ export function UserModal({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Activo">Activo</SelectItem>
-                  <SelectItem value="Desactivo">Desactivo</SelectItem>
+                  <SelectItem value="ACTIVO">ACTIVO</SelectItem>
+                  <SelectItem value="INACTIVO">INACTIVO</SelectItem>
                 </SelectContent>
               </Select>
             </div>

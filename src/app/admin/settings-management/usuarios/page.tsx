@@ -97,6 +97,8 @@ export default function UsuariosPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case 'ACTIVO': return 'bg-green-100 text-green-800';
+      case 'INACTIVO': return 'bg-red-100 text-red-800';
       case 'Activo': return 'bg-green-100 text-green-800';
       case 'Desactivo': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
@@ -105,6 +107,8 @@ export default function UsuariosPage() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
+      case 'ACTIVO': return <UserCheck className="h-4 w-4" />;
+      case 'INACTIVO': return <UserX className="h-4 w-4" />;
       case 'Activo': return <UserCheck className="h-4 w-4" />;
       case 'Desactivo': return <UserX className="h-4 w-4" />;
       default: return <UserX className="h-4 w-4" />;
@@ -134,7 +138,7 @@ export default function UsuariosPage() {
   };
 
   const getUsuariosAtivos = () => {
-    return (users as Usuario[])?.filter((u) => u.estadoActual === 'Activo').length || 0;
+    return (users as Usuario[])?.filter((u) => u.estadoActual === 'ACTIVO' || u.estadoActual === 'Activo').length || 0;
   };
 
   // Usar tipos de usuário da API ao invés de extrair dos usuários
