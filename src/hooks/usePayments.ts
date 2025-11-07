@@ -29,7 +29,7 @@ export interface IPayment {
 export interface ICreatePaymentData {
   codigo_Aluno: number;
   codigo_Tipo_Servico: number;
-  mes: string;
+  mes?: string; // Opcional para serviços que não requerem mês (uniformes, etc.)
   ano: number;
   preco: number;
   observacao?: string;

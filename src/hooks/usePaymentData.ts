@@ -770,8 +770,8 @@ export const useTiposServicosCompativeis = () => {
       const response = await api.get(`/api/payment-management/tipos-servicos-compatibles/${alunoId}${params}`);
       
       if (response.data.success) {
-        setTiposServicos(response.data.data);
-        setAlunoInfo(response.data.alunoInfo);
+        setTiposServicos(response.data.data.tiposServicos || []);
+        setAlunoInfo(response.data.data.alunoInfo);
       } else {
         throw new Error(response.data.message || 'Erro ao buscar tipos de serviços');
       }

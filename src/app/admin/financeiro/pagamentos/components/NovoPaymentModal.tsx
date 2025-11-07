@@ -754,7 +754,12 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
   const validateForm = (): string | null => {
     if (!formData.codigo_Aluno) return 'Selecione um aluno';
     if (!formData.codigo_Tipo_Servico) return 'Tipo de serviço não encontrado para esta turma';
-    if (!formData.mesesSelecionados.length) return 'Selecione pelo menos um mês';
+    
+    // Só exigir meses para categorias que requerem (propinas)
+    if (categoriaRequerMeses && !formData.mesesSelecionados.length) {
+      return 'Selecione pelo menos um mês';
+    }
+    
     if (!formData.ano) return 'Informe o ano letivo';
     if (!formData.preco || parseFloat(formData.preco) <= 0) return 'Informe um valor válido';
     if (!formData.codigo_FormaPagamento) return 'Selecione a forma de pagamento';
@@ -808,11 +813,14 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
       }
 
       // Criar pagamentos SEQUENCIALMENTE para evitar duplicação de borderô
-      for (let i = 0; i < formData.mesesSelecionados.length; i++) {
-        const mes = formData.mesesSelecionados[i];
+      // Para serviços que não requerem meses, criar apenas 1 pagamento sem mês
+      const mesesParaProcessar = categoriaRequerMeses ? formData.mesesSelecionados : [''];
+      
+      for (let i = 0; i < mesesParaProcessar.length; i++) {
+        const mes = mesesParaProcessar[i];
         
         // Determinar o ano correto baseado no mês
-        let anoCorreto = formData.ano!;
+        let anoCorreto = formData.ano && formData.ano >= 1900 ? formData.ano : new Date().getFullYear();
         if (anoLetivoSelecionado) {
           const mesesPrimeiroAno = ['SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
           const mesesSegundoAno = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO', 'JULHO'];
@@ -822,6 +830,11 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
           } else if (mesesSegundoAno.includes(mes)) {
             anoCorreto = parseInt(anoLetivoSelecionado.anoFinal);
           }
+        }
+        
+        // Garantir que o ano seja sempre válido
+        if (!anoCorreto || anoCorreto < 1900 || isNaN(anoCorreto)) {
+          anoCorreto = new Date().getFullYear();
         }
 
         // Gerar borderô único para cada mês (se for depósito/multicaixa)
@@ -839,7 +852,7 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
         const paymentData = {
           codigo_Aluno: formData.codigo_Aluno!,
           codigo_Tipo_Servico: formData.codigo_Tipo_Servico!,
-          mes: mes,
+          ...(categoriaRequerMeses && mes && { mes: mes }), // Só incluir mês se categoria requer e mês não está vazio
           ano: anoCorreto,
           preco: parseFloat(formData.preco),
           observacao: formData.observacao,
@@ -851,7 +864,14 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
           })
         };
         
-        console.log(`Criando pagamento ${i + 1}/${formData.mesesSelecionados.length} para mês ${mes}:`, paymentData);
+        console.log('🔍 DEBUG - Dados sendo enviados:', {
+          formData_ano: formData.ano,
+          anoCorreto: anoCorreto,
+          anoLetivoSelecionado: anoLetivoSelecionado,
+          paymentData: paymentData
+        });
+        
+        console.log(`Criando pagamento ${i + 1}/${mesesParaProcessar.length} ${categoriaRequerMeses ? `para mês ${mes}` : 'sem mês específico'}:`, paymentData);
         
         try {
           const payment = await createPayment(paymentData);
@@ -872,7 +892,7 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
         window.dispatchEvent(new CustomEvent('paymentCreated', { 
           detail: { 
             alunoId: formData.codigo_Aluno,
-            meses: formData.mesesSelecionados 
+            meses: categoriaRequerMeses ? formData.mesesSelecionados : []
           }
         }));
       }
@@ -915,15 +935,24 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
         },
         observacao: formData.observacao,
         operador: nomeOperador,
-        mesesPagos: formData.mesesSelecionados,
-        totalPago: parseFloat(formData.preco) * formData.mesesSelecionados.length,
+        mesesPagos: categoriaRequerMeses ? formData.mesesSelecionados : [],
+        totalPago: categoriaRequerMeses 
+          ? parseFloat(formData.preco) * formData.mesesSelecionados.length 
+          : parseFloat(formData.preco),
         // Dados adicionais para a fatura
-        servicos: formData.mesesSelecionados.map(mes => ({
-          descricao: `${tipoServicoSelecionado?.designacao || "Serviço"} - ${mes}`,
-          quantidade: 1,
-          precoUnitario: parseFloat(formData.preco),
-          total: parseFloat(formData.preco)
-        }))
+        servicos: categoriaRequerMeses 
+          ? formData.mesesSelecionados.map(mes => ({
+              descricao: `${tipoServicoSelecionado?.designacao || "Serviço"} - ${mes}`,
+              quantidade: 1,
+              precoUnitario: parseFloat(formData.preco),
+              total: parseFloat(formData.preco)
+            }))
+          : [{
+              descricao: tipoServicoSelecionado?.designacao || "Serviço",
+              quantidade: 1,
+              precoUnitario: parseFloat(formData.preco),
+              total: parseFloat(formData.preco)
+            }]
       });
       setShowInvoiceModal(true);
       
@@ -978,7 +1007,7 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
           servicos: [
             {
               descricao: `${createdPayment.tipoServico?.designacao || 'Propina'}`,
-              quantidade: mesesPagos.length,
+              quantidade: mesesPagos.length > 0 ? mesesPagos.length : 1, // Se não há meses, quantidade = 1
               precoUnitario: createdPayment.preco || 0,
               total: valorTotal
             }
@@ -1498,7 +1527,14 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
                 ) : tiposCompativeis.length > 0 ? (
                   <Select 
                     value={formData.codigo_Tipo_Servico?.toString() || ''} 
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, codigo_Tipo_Servico: parseInt(value) }))}
+                    onValueChange={(value) => {
+                      const tipoSelecionado = tiposCompativeis.find(tipo => tipo.codigo === parseInt(value));
+                      setFormData(prev => ({ 
+                        ...prev, 
+                        codigo_Tipo_Servico: parseInt(value),
+                        preco: tipoSelecionado?.preco?.toString() || prev.preco
+                      }));
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione um tipo de serviço..." />
@@ -1910,7 +1946,7 @@ const NovoPaymentModal: React.FC<NovoPaymentModalProps> = ({ open, onClose }) =>
                       servicos: [
                         {
                           descricao: createdPayment.tipoServico?.designacao || 'Serviço',
-                          quantidade: mesesPagos.length,
+                          quantidade: mesesPagos.length > 0 ? mesesPagos.length : 1, // Se não há meses, quantidade = 1
                           precoUnitario: createdPayment.preco || 0,
                           total: valorTotal
                         }
