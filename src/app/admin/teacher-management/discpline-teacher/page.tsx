@@ -97,74 +97,63 @@ export default function AtribuicoesProfessoresPage() {
       
       console.log('Iniciando carregamento de dados...');
       
-      // Carregar professores
-      try {
-        const professoresRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/professores`);
-        if (professoresRes.ok) {
-          const professoresData = await professoresRes.json();
-          console.log('Professores carregados:', professoresData);
-          setProfessores(professoresData.data || []);
-        } else {
-          console.error('Erro ao carregar professores:', professoresRes.status);
-        }
-      } catch (error) {
-        console.error('Erro ao carregar professores:', error);
+      // Carregar todos os dados em paralelo para melhor performance
+      const [professoresRes, disciplinasRes, cursosRes, turmasRes, anosLetivosRes] = await Promise.all([
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/professores`).catch(error => {
+          console.error('Erro ao carregar professores:', error);
+          return null;
+        }),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/disciplinas`).catch(error => {
+          console.error('Erro ao carregar disciplinas:', error);
+          return null;
+        }),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/cursos`).catch(error => {
+          console.error('Erro ao carregar cursos:', error);
+          return null;
+        }),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/turmas`).catch(error => {
+          console.error('Erro ao carregar turmas:', error);
+          return null;
+        }),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/anos-lectivos`).catch(error => {
+          console.error('Erro ao carregar anos letivos:', error);
+          return null;
+        })
+      ]);
+
+      // Processar professores
+      if (professoresRes && professoresRes.ok) {
+        const professoresData = await professoresRes.json();
+        console.log('Professores carregados:', professoresData);
+        setProfessores(professoresData.data || []);
       }
 
-      // Carregar disciplinas
-      try {
-        const disciplinasRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/disciplinas`);
-        if (disciplinasRes.ok) {
-          const disciplinasData = await disciplinasRes.json();
-          console.log('Disciplinas carregadas:', disciplinasData);
-          setDisciplinas(disciplinasData.data || []);
-        } else {
-          console.error('Erro ao carregar disciplinas:', disciplinasRes.status);
-        }
-      } catch (error) {
-        console.error('Erro ao carregar disciplinas:', error);
+      // Processar disciplinas
+      if (disciplinasRes && disciplinasRes.ok) {
+        const disciplinasData = await disciplinasRes.json();
+        console.log('Disciplinas carregadas:', disciplinasData);
+        setDisciplinas(disciplinasData.data || []);
       }
 
-      // Carregar cursos
-      try {
-        const cursosRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/cursos`);
-        if (cursosRes.ok) {
-          const cursosData = await cursosRes.json();
-          console.log('Cursos carregados:', cursosData);
-          setCursos(cursosData.data || []);
-        } else {
-          console.error('Erro ao carregar cursos:', cursosRes.status);
-        }
-      } catch (error) {
-        console.error('Erro ao carregar cursos:', error);
+      // Processar cursos
+      if (cursosRes && cursosRes.ok) {
+        const cursosData = await cursosRes.json();
+        console.log('Cursos carregados:', cursosData);
+        setCursos(cursosData.data || []);
       }
 
-      // Carregar turmas
-      try {
-        const turmasRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/turmas`);
-        if (turmasRes.ok) {
-          const turmasData = await turmasRes.json();
-          console.log('Turmas carregadas:', turmasData);
-          setTurmas(turmasData.data || []);
-        } else {
-          console.error('Erro ao carregar turmas:', turmasRes.status);
-        }
-      } catch (error) {
-        console.error('Erro ao carregar turmas:', error);
+      // Processar turmas
+      if (turmasRes && turmasRes.ok) {
+        const turmasData = await turmasRes.json();
+        console.log('Turmas carregadas:', turmasData);
+        setTurmas(turmasData.data || []);
       }
 
-      // Carregar anos letivos
-      try {
-        const anosLetivosRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/academic-management/anos-lectivos`);
-        if (anosLetivosRes.ok) {
-          const anosLetivosData = await anosLetivosRes.json();
-          console.log('Anos letivos carregados:', anosLetivosData);
-          setAnosLetivos(anosLetivosData.data || []);
-        } else {
-          console.error('Erro ao carregar anos letivos:', anosLetivosRes.status);
-        }
-      } catch (error) {
-        console.error('Erro ao carregar anos letivos:', error);
+      // Processar anos letivos
+      if (anosLetivosRes && anosLetivosRes.ok) {
+        const anosLetivosData = await anosLetivosRes.json();
+        console.log('Anos letivos carregados:', anosLetivosData);
+        setAnosLetivos(anosLetivosData.data || []);
       }
 
     } catch (error) {

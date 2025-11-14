@@ -23,6 +23,7 @@ interface Turma {
   classe: string;
   curso: string;
   disciplina: Disciplina;
+  notaMaxima?: number; // Para identificar se é ensino primário (10) ou secundário (20)
 }
 
 interface Aluno {
@@ -58,6 +59,52 @@ export default function LancamentoNotasProfessorPage() {
   const [turmaSelecionada, setTurmaSelecionada] = useState<string>('');
   const [periodoSelecionado, setPeriodoSelecionado] = useState<string>('');
   const [notas, setNotas] = useState<Record<number, string>>({});
+
+  // Função para determinar se é ensino primário (notas 0-10)
+  const isEnsinoPrimario = (classe: string): boolean => {
+    const classesPrimarias = [
+      'Iniciação', 'PRÉ-CLASSE', 'Pré-Classe', 'INICIÇÃO',
+      '1ª Classe', '2ª Classe', '3ª Classe', '4ª Classe', '5ª Classe', '6ª Classe'
+    ];
+    
+    // Verificação mais específica: deve começar com uma das classes primárias
+    // ou ser exatamente uma das classes primárias
+    return classesPrimarias.some(cp => {
+      const classeNormalizada = classe.trim().toLowerCase();
+      const cpNormalizada = cp.toLowerCase();
+      
+      // Verifica se é exatamente a classe ou se começa com a classe seguida de espaço
+      return classeNormalizada === cpNormalizada || 
+             classeNormalizada.startsWith(cpNormalizada + ' ') ||
+             classeNormalizada.startsWith(cpNormalizada + '-');
+    });
+  };
+
+  // Função para obter nota máxima baseada na turma
+  const getNotaMaxima = (turmaObj: Turma | null): number => {
+    if (!turmaObj) return 20; // Padrão secundário
+    
+    // Se a turma tem notaMaxima definida e é maior que 0, usar ela
+    if (turmaObj.notaMaxima && turmaObj.notaMaxima > 0) {
+      return turmaObj.notaMaxima;
+    }
+    
+    // Caso contrário, determinar pela classe
+    return isEnsinoPrimario(turmaObj.classe) ? 10 : 20;
+  };
+
+  // Função para obter classificação baseada na nota e tipo de ensino
+  const getClassificacao = (nota: number, isPrimario: boolean): string => {
+    if (isPrimario) {
+      // Ensino Primário (0-10)
+      if (nota >= 5) return 'Positiva';
+      return 'Negativa';
+    } else {
+      // Ensino Secundário (0-20)
+      if (nota >= 10) return 'Positiva';
+      return 'Negativa';
+    }
+  };
 
   useEffect(() => {
     carregarDados();
@@ -123,8 +170,16 @@ export default function LancamentoNotasProfessorPage() {
   };
 
   const handleNotaChange = (alunoId: number, valor: string) => {
-    // Validar se é um número válido
-    if (valor === '' || (!isNaN(parseFloat(valor)) && parseFloat(valor) >= 0 && parseFloat(valor) <= 20)) {
+    // Obter turma atual para determinar nota máxima
+    const turmaObj = turmaSelecionada ? (() => {
+      const [turmaId, disciplinaId] = turmaSelecionada.split('-').map(Number);
+      return turmas.find(t => t.codigo === turmaId && t.disciplina.codigo === disciplinaId);
+    })() : null;
+    
+    const notaMaxima = getNotaMaxima(turmaObj);
+    
+    // Validar se é um número válido dentro do limite da turma
+    if (valor === '' || (!isNaN(parseFloat(valor)) && parseFloat(valor) >= 0 && parseFloat(valor) <= notaMaxima)) {
       setNotas(prev => ({
         ...prev,
         [alunoId]: valor
@@ -247,7 +302,18 @@ export default function LancamentoNotasProfessorPage() {
                 <div className="mt-3 p-3 bg-blue-50 rounded-lg">
                   <p className="text-sm text-blue-800">
                     <strong>Curso:</strong> {turmaObj.curso}<br />
-                    <strong>Disciplina:</strong> {turmaObj.disciplina.nome}
+                    <strong>Disciplina:</strong> {turmaObj.disciplina.nome}<br />
+                    <strong>Tipo de Ensino:</strong> {isEnsinoPrimario(turmaObj.classe) ? 'Primário (0-10)' : 'Secundário (0-20)'}
+                    {isEnsinoPrimario(turmaObj.classe) && (
+                      <span className="block text-xs mt-1 text-blue-600">
+                        📝 Classificação: 5-10 = Positiva | 0-4 = Negativa
+                      </span>
+                    )}
+                    {!isEnsinoPrimario(turmaObj.classe) && (
+                      <span className="block text-xs mt-1 text-green-600">
+                        📝 Classificação: 10-20 = Positiva | 0-9 = Negativa
+                      </span>
+                    )}
                   </p>
                 </div>
               )}
@@ -314,7 +380,15 @@ export default function LancamentoNotasProfessorPage() {
                 <div className="col-span-1">#</div>
                 <div className="col-span-5">Nome do Aluno</div>
                 <div className="col-span-3">Nº Processo</div>
-                <div className="col-span-2">Nota (0-20)</div>
+                <div className="col-span-2">
+                  Nota (0-{getNotaMaxima(turmaObj)})
+                  {turmaObj && isEnsinoPrimario(turmaObj.classe) && (
+                    <span className="text-xs text-blue-600 block">Ensino Primário</span>
+                  )}
+                  {turmaObj && !isEnsinoPrimario(turmaObj.classe) && (
+                    <span className="text-xs text-green-600 block">Ensino Secundário</span>
+                  )}
+                </div>
                 <div className="col-span-1">Status</div>
               </div>
               
@@ -333,13 +407,14 @@ export default function LancamentoNotasProfessorPage() {
                     <Input
                       type="number"
                       min="0"
-                      max="20"
+                      max={getNotaMaxima(turmaObj)}
                       step="0.1"
                       placeholder="0.0"
                       value={notas[aluno.codigo] || ''}
                       onChange={(e) => handleNotaChange(aluno.codigo, e.target.value)}
                       className="text-center"
                       disabled={!periodoSelecionado}
+                      title={`Nota de 0 a ${getNotaMaxima(turmaObj)} ${turmaObj && isEnsinoPrimario(turmaObj.classe) ? '(Ensino Primário)' : '(Ensino Secundário)'}`}
                     />
                   </div>
                   <div className="col-span-1">

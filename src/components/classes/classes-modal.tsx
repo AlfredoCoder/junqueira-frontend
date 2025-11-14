@@ -51,7 +51,8 @@ const classSchema = yup.object().shape({
   notaMaxima: yup
     .number()
     .required('Nota máxima é obrigatória')
-    .min(15, 'Nota máxima deve ser no mínimo 15')
+    .min(10, 'Nota máxima deve ser no mínimo 10')
+    .max(20, 'Nota máxima deve ser no máximo 20')
     .default(20),
   exame: yup
     .boolean()
@@ -200,13 +201,16 @@ export function ClassModal({
                     {...field}
                     id="notaMaxima"
                     type="number"
-                    min="1"
-                    max="100"
+                    min="10"
+                    max="20"
                     placeholder="20"
                     onChange={(e) => field.onChange(parseInt(e.target.value) || 20)}
                   />
                 )}
               />
+              <p className="text-xs text-gray-500">
+                Ensino Primário: 10 | Ensino Secundário: 20
+              </p>
               {errors.notaMaxima && (
                 <p className="text-sm text-red-600">{errors.notaMaxima.message}</p>
               )}

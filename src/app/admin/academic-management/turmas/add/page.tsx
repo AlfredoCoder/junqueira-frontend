@@ -322,7 +322,7 @@ export default function AddTurmaPage() {
                           {coursesLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin loading-spinner" />}
                           <SelectValue placeholder={coursesLoading ? "Carregando cursos..." : "Selecione o curso"} />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="max-h-60 overflow-y-auto">
                           {coursesLoading ? (
                             <SelectItem value="loading" disabled>
                               Carregando cursos...

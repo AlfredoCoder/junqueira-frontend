@@ -122,7 +122,7 @@ export const useStudent = (): UseStudentReturn => {
                 sexo: studentData.sexo || 'M',
                 dataNascimento: formatDate(studentData.dataNascimento),
                 telefone: studentData.telefone || '',
-                email: studentData.email || '',
+                email: studentData.email || undefined, // Não enviar string vazia para campo opcional
                 morada: studentData.morada || '',
 
                 // Campos numéricos obrigatórios
@@ -147,7 +147,7 @@ export const useStudent = (): UseStudentReturn => {
                 encarregado: {
                     nome: studentDataWithEncarregado.encarregado?.nome || '',
                     telefone: studentDataWithEncarregado.encarregado?.telefone || '',
-                    email: studentDataWithEncarregado.encarregado?.email || undefined,
+                    email: studentDataWithEncarregado.encarregado?.email || undefined, // Já está correto
                     codigo_Profissao: (() => {
                         const profissaoId = Number(studentDataWithEncarregado.encarregado?.codigo_Profissao);
                         // Validação genérica - usar 1 como padrão se inválido

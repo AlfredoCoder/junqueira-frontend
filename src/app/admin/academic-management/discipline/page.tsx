@@ -730,7 +730,7 @@ export default function DisciplinasOptimized() {
                 <SelectTrigger>
                   <SelectValue placeholder="Escolha uma turma" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-60 overflow-y-auto">
                   {turmas.map(turma => (
                     <SelectItem key={turma.codigo} value={turma.codigo.toString()}>
                       {turma.designacao} - {turma.tb_classes?.designacao} ({turma.tb_cursos?.designacao})

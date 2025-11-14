@@ -109,17 +109,51 @@ export default function AlunosTurmaPage() {
     return Math.round((soma / notasComMedia.length) * 100) / 100;
   };
 
+  // Função para determinar se é ensino primário (notas 0-10)
+  const isEnsinoPrimario = (turmaNome: string): boolean => {
+    const classesPrimarias = [
+      'Iniciação', 'PRÉ-CLASSE', 'Pré-Classe', 'INICIÇÃO',
+      '1ª Classe', '2ª Classe', '3ª Classe', '4ª Classe', '5ª Classe', '6ª Classe'
+    ];
+    
+    // Verificação mais específica: deve começar com uma das classes primárias
+    // ou ser exatamente uma das classes primárias
+    return classesPrimarias.some(cp => {
+      const turmaNormalizada = turmaNome.trim().toLowerCase();
+      const cpNormalizada = cp.toLowerCase();
+      
+      // Verifica se é exatamente a classe ou se começa com a classe seguida de espaço
+      return turmaNormalizada === cpNormalizada || 
+             turmaNormalizada.startsWith(cpNormalizada + ' ') ||
+             turmaNormalizada.startsWith(cpNormalizada + '-');
+    });
+  };
+
   const obterClassificacao = (media: number | null): string => {
     if (media === null) return '-';
-    if (media >= 17) return 'Muito Bom';
-    if (media >= 14) return 'Bom';
-    if (media >= 10) return 'Suficiente';
-    return 'Insuficiente';
+    
+    const isPrimario = isEnsinoPrimario(turmaNome);
+    
+    if (isPrimario) {
+      // Ensino Primário (0-10)
+      if (media >= 5) return 'Positiva';
+      return 'Negativa';
+    } else {
+      // Ensino Secundário (0-20)
+      if (media >= 17) return 'Muito Bom';
+      if (media >= 14) return 'Bom';
+      if (media >= 10) return 'Suficiente';
+      return 'Insuficiente';
+    }
   };
 
   const obterAprovacao = (media: number | null): { status: string; color: string } => {
     if (media === null) return { status: '-', color: 'text-gray-500' };
-    if (media >= 10) return { status: 'Aprovado', color: 'text-green-600' };
+    
+    const isPrimario = isEnsinoPrimario(turmaNome);
+    const limiteAprovacao = isPrimario ? 5 : 10;
+    
+    if (media >= limiteAprovacao) return { status: 'Aprovado', color: 'text-green-600' };
     return { status: 'Reprovado', color: 'text-red-600' };
   };
 
@@ -303,8 +337,17 @@ export default function AlunosTurmaPage() {
               <div className="mt-4 text-sm text-gray-600">
                 <p><strong>Legenda:</strong></p>
                 <p>MAC - Média de Avaliação Contínua | PP - Prova Parcial | PT - Prova Trimestral</p>
-                <p><strong>Classificação:</strong> Muito Bom (≥17) | Bom (14-16) | Suficiente (10-13) | Insuficiente (&lt;10)</p>
-                <p><strong>Situação:</strong> <span className="text-green-600">Aprovado</span> (≥10) | <span className="text-red-600">Reprovado</span> (&lt;10)</p>
+                {isEnsinoPrimario(turmaNome) ? (
+                  <>
+                    <p><strong>Classificação (Ensino Primário):</strong> <span className="text-green-600">Positiva</span> (≥5) | <span className="text-red-600">Negativa</span> (&lt;5)</p>
+                    <p><strong>Situação:</strong> <span className="text-green-600">Aprovado</span> (≥5) | <span className="text-red-600">Reprovado</span> (&lt;5)</p>
+                  </>
+                ) : (
+                  <>
+                    <p><strong>Classificação (Ensino Secundário):</strong> Muito Bom (≥17) | Bom (14-16) | Suficiente (10-13) | Insuficiente (&lt;10)</p>
+                    <p><strong>Situação:</strong> <span className="text-green-600">Aprovado</span> (≥10) | <span className="text-red-600">Reprovado</span> (&lt;10)</p>
+                  </>
+                )}
               </div>
             </div>
           )}
