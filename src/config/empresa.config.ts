@@ -6,7 +6,7 @@
 export const EMPRESA_CONFIG = {
   // Dados principais da empresa
   nome: "Complexo Escolar Privado Abilio Junqueira",
-  nomeCompleto: "Complexo Escolar Privado Abilio Junqueira",
+  nomeCompleto: "Complexo Escolar Privado Abilio Junqueira", 
   nomeAbreviado: "Complexo Abilio Junqueira",
   
   // Dados fiscais

@@ -109,96 +109,107 @@ export default function ThermalInvoice({
 
       {/* Fatura térmica */}
       <div 
-        className="bg-white text-black p-4 mx-auto border border-gray-300 print:border-0" 
-        style={{ width: "105mm", height: "148mm", fontFamily: "monospace", fontSize: "10px" }}
+        className="bg-white text-black p-1 mx-auto border border-gray-300 print:border-0" 
+        style={{ 
+          width: "80mm", 
+          minHeight: "auto", 
+          fontFamily: "monospace", 
+          fontSize: "13px", 
+          lineHeight: "1.2",
+          color: "#000000",
+          fontWeight: "600" // Intensifica todo o texto
+        }}
       >
         {/* Cabeçalho */}
-        <div className="text-center text-sm border-b border-dashed border-gray-400 pb-2 mb-2">
-           <img src=".../public/icon.png" alt="Logo" style={{ width: "40px", height: "auto", marginBottom: "5px" }} />
-          <h2 className="font-bold text-base">Complexo Escolar Privado Abilio junqueira</h2>
-          <p>NIF: 000036970ME010</p>
-          <p>Talatona, Bairro Mirantes - Rua D - Travessa 12</p>
-          <p>Tlf: 923336102, 946309668</p>
-          <p>Data: {formatDate(data.pagamento.data)}</p>
+        <div className="text-center border-b border-dashed border-gray-600 pb-1 mb-2">
+          <h2 className="font-black text-xl leading-tight mb-0.5" style={{color: "#000", fontWeight: "900"}}>
+            Complexo Escolar Privado Abilio junqueira
+          </h2>
+          <p className="font-bold text-sm" style={{color: "#000"}}>NIF: 000036970ME010</p>
+          <p className="font-bold text-sm" style={{color: "#000"}}>Talatona, Bairro Mirantes - Rua D - Travessa 12</p>
+          <p className="font-bold text-sm" style={{color: "#000"}}>Tlf: 923336102, 946309668</p>
+          <p className="font-black text-sm" style={{color: "#000"}}>Data: {formatDate(data.pagamento.data)}</p>
         </div>
 
         {/* Dados do Aluno */}
-        <div className="text-sm mb-2">
-          <p><strong>Aluno(a):</strong> {data.pagamento.aluno.nome}</p>
-          <p>Consumidor Final</p>
-          {curso && <p>{curso}</p>}
-          {classe && turma && <p>{classe} - {turma}</p>}
+        <div className="mb-2 space-y-0.5">
+          <p className="font-black text-sm" style={{color: "#000", fontWeight: "900"}}>
+            <strong>Aluno(a):</strong> {data.pagamento.aluno.nome}
+          </p>
+          <p className="font-bold text-sm" style={{color: "#000"}}>Consumidor Final</p>
+          {curso && <p className="font-bold text-sm" style={{color: "#000"}}>{curso}</p>}
+          {classe && turma && <p className="font-bold text-sm" style={{color: "#000"}}>{classe} - {turma}</p>}
           {data.pagamento.aluno.n_documento_identificacao && (
-            <p>Doc: {data.pagamento.aluno.n_documento_identificacao}</p>
+            <p className="font-bold text-sm" style={{color: "#000"}}>Doc: {data.pagamento.aluno.n_documento_identificacao}</p>
           )}
         </div>
 
         {/* Tabela de serviços */}
-        <table className="w-full text-sm border-t border-b border-dashed border-gray-400 my-2">
+        <table className="w-full border-t border-b border-dashed border-gray-600 my-2">
           <thead>
             <tr className="text-left">
-              <th className="w-1/2">Serviços</th>
-              <th className="text-right">Qtd</th>
-              <th className="text-right">P.Unit</th>
-              <th className="text-right">Total</th>
+              <th className="w-1/2 font-black text-sm py-0.5" style={{color: "#000", fontWeight: "900"}}>Serviços</th>
+              <th className="text-right font-black text-sm py-0.5" style={{color: "#000", fontWeight: "900"}}>Qtd</th>
+              <th className="text-right font-black text-sm py-0.5" style={{color: "#000", fontWeight: "900"}}>P.Unit</th>
+              <th className="text-right font-black text-sm py-0.5" style={{color: "#000", fontWeight: "900"}}>Total</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td className="py-1">{data.pagamento.tipoServico.designacao}</td>
-              <td className="text-right py-1">1</td>
-              <td className="text-right py-1">{formatCurrency(data.pagamento.preco)}</td>
-              <td className="text-right py-1">{formatCurrency(data.pagamento.preco)}</td>
+              <td className="py-0.5 font-bold text-sm" style={{color: "#000"}}>{data.pagamento.tipoServico.designacao}</td>
+              <td className="text-right py-0.5 font-bold text-sm" style={{color: "#000"}}>1</td>
+              <td className="text-right py-0.5 font-black text-sm" style={{color: "#000", fontWeight: "900"}}>{formatCurrency(data.pagamento.preco)}</td>
+              <td className="text-right py-0.5 font-black text-sm" style={{color: "#000", fontWeight: "900"}}>{formatCurrency(data.pagamento.preco)}</td>
             </tr>
           </tbody>
         </table>
 
         {/* Totais */}
-        <div className="text-sm space-y-1 ultra-fast-fade">
-          <p>Forma de Pagamento: {data.pagamento.formaPagamento.designacao}</p>
+        <div className="space-y-0.5 mb-2">
+          <p className="font-bold text-sm" style={{color: "#000"}}>Forma de Pagamento: {data.pagamento.formaPagamento.designacao}</p>
           
           {/* Informações bancárias apenas para depósitos */}
           {data.pagamento.contaMovimentada && (
-            <p>Conta Bancária: {data.pagamento.contaMovimentada}</p>
+            <p className="font-bold text-sm" style={{color: "#000"}}>Conta Bancária: {data.pagamento.contaMovimentada}</p>
           )}
           {data.pagamento.n_Bordoro && (
-            <p>Nº Borderô: {data.pagamento.n_Bordoro}</p>
+            <p className="font-bold text-sm" style={{color: "#000"}}>Nº Borderô: {data.pagamento.n_Bordoro}</p>
           )}
           
           {/* Meses pagos */}
           {data.pagamento.mesesPagos && data.pagamento.mesesPagos.length > 0 && (
-            <p>Meses: {data.pagamento.mesesPagos.join(', ')}</p>
+            <p className="font-bold text-sm" style={{color: "#000"}}>Meses: {data.pagamento.mesesPagos.join(', ')}</p>
           )}
           
-          <p>Total: {formatCurrency(data.pagamento.preco)}</p>
-          <p>Total IVA: 0.00</p>
-          <p>N.º de Itens: {data.pagamento.mesesPagos?.length || 1}</p>
-          <p>Desconto: 0.00</p>
-          <p>A Pagar: {formatCurrency(data.pagamento.preco)}</p>
-          <p>Total Pago: {formatCurrency(data.pagamento.preco)}</p>
-          <p>Pago em Saldo: 0.00</p>
-          <p>Saldo Actual: 0.00</p>
+          <p className="font-black text-sm" style={{color: "#000", fontWeight: "900"}}>Total: {formatCurrency(data.pagamento.preco)}</p>
+          <p className="font-bold text-sm" style={{color: "#000"}}>Total IVA: 0.00</p>
+          <p className="font-bold text-sm" style={{color: "#000"}}>N.º de Itens: {data.pagamento.mesesPagos?.length || 1}</p>
+          <p className="font-bold text-sm" style={{color: "#000"}}>Desconto: 0.00</p>
+          <p className="font-black text-sm" style={{color: "#000", fontWeight: "900"}}>A Pagar: {formatCurrency(data.pagamento.preco)}</p>
+          <p className="font-black text-sm" style={{color: "#000", fontWeight: "900"}}>Total Pago: {formatCurrency(data.pagamento.preco)}</p>
+          <p className="font-bold text-sm" style={{color: "#000"}}>Pago em Saldo: 0.00</p>
+          <p className="font-bold text-sm" style={{color: "#000"}}>Saldo Actual: 0.00</p>
         </div>
 
         {/* Observações */}
         {data.pagamento.observacao && (
-          <div className="text-sm mt-2 border-t border-dashed border-gray-400 pt-2">
-            <p><strong>Obs:</strong> {data.pagamento.observacao}</p>
+          <div className="border-t border-dashed border-gray-400 pt-1 mb-2">
+            <p className="font-bold text-sm" style={{color: "#000"}}><strong style={{fontWeight: "900"}}>Obs:</strong> {data.pagamento.observacao}</p>
           </div>
         )}
 
         {/* Rodapé */}
-        <div className="text-center text-xs border-t border-dashed border-gray-400 mt-3 pt-2">
-          <p>Operador: {data.operador || 'Sistema'}</p>
-          <p>Emitido em: {formatDate(data.pagamento.data)}</p>
-          <p>Fatura: {data.pagamento.fatura}</p>
-          <p>REGIME SIMPLIFICADO</p>
-          <p>Processado pelo computador</p>
+        <div className="text-center border-t border-dashed border-gray-400 pt-1 space-y-0.5">
+          <p className="font-bold text-sm" style={{color: "#000"}}>Operador: {data.operador || 'Sistema'}</p>
+          <p className="font-bold text-sm" style={{color: "#000"}}>Emitido em: {formatDate(data.pagamento.data)}</p>
+          <p className="font-black text-sm" style={{color: "#000", fontWeight: "900"}}>Fatura: {data.pagamento.fatura}</p>
+          <p className="font-bold text-sm" style={{color: "#000"}}>REGIME SIMPLIFICADO</p>
+          <p className="font-bold text-sm" style={{color: "#000"}}>Processado pelo computador</p>
         </div>
 
         {/* Selo de Pago */}
-        <div className="text-center mt-4">
-          <span className="text-blue-600 font-bold text-lg">[ PAGO ]</span>
+        <div className="text-center mt-2">
+          <span className="font-black text-lg border-2 border-blue-800 px-3 py-1 rounded" style={{color: "#000080", fontWeight: "900", borderColor: "#000080"}}>PAGO</span>
         </div>
       </div>
 
@@ -219,7 +230,9 @@ export default function ThermalInvoice({
             top: 0;
             width: 80mm !important;
             margin: 0 !important;
-            padding: 5mm !important;
+            padding: 3mm !important;
+            font-size: 12px !important;
+            line-height: 1.3 !important;
           }
           
           @page {

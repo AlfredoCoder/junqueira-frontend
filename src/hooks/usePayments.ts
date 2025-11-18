@@ -328,7 +328,7 @@ export const useGenerateInvoicePDF = () => {
           servicos: [
             {
               descricao: payment.tipoServico?.designacao || 'Serviço',
-              quantidade: mesesPagos.length,
+              quantidade: mesesPagos.length || 1,
               precoUnitario: payment.preco || 0,
               total: valorTotal
             }
@@ -347,7 +347,7 @@ export const useGenerateInvoicePDF = () => {
           operador: nomeOperador
         };
         
-        // Criar uma nova janela para impressão
+        // Criar uma nova janela para impressão (FUNCIONALIDADE ORIGINAL)
         const printWindow = window.open('', '_blank');
         if (printWindow) {
           printWindow.document.write(`
@@ -362,86 +362,109 @@ export const useGenerateInvoicePDF = () => {
                 }
                 body {
                   font-family: 'Courier New', monospace;
-                  font-size: 12px;
-                  line-height: 1.2;
+                  font-size: 13px;
+                  font-weight: 600;
+                  line-height: 1.3;
                   margin: 0;
-                  padding: 8px;
+                  padding: 6px;
                   width: 80mm;
                   background: white;
-                  color: black;
+                  color: #000;
                 }
                 .header {
                   text-align: center;
-                  border-bottom: 1px solid #000;
-                  padding-bottom: 8px;
-                  margin-bottom: 8px;
+                  border-bottom: 2px solid #000;
+                  padding-bottom: 6px;
+                  margin-bottom: 6px;
                 }
                 .header h2 {
                   font-size: 14px;
-                  font-weight: bold;
-                  margin: 0 0 4px 0;
+                  font-weight: 900;
+                  margin: 0 0 3px 0;
+                  color: #000;
                 }
                 .header p {
-                  margin: 2px 0;
+                  margin: 1px 0;
                   font-size: 11px;
+                  font-weight: bold;
+                  color: #000;
                 }
                 .aluno {
-                  margin-bottom: 8px;
+                  margin-bottom: 6px;
                   font-size: 11px;
                 }
                 .aluno p {
-                  margin: 2px 0;
+                  margin: 1px 0;
+                  font-weight: bold;
+                  color: #000;
+                }
+                .aluno p strong {
+                  font-weight: 900;
                 }
                 .servicos-table {
                   width: 100%;
-                  border-top: 1px solid #000;
-                  border-bottom: 1px solid #000;
-                  margin: 8px 0;
+                  border-top: 2px solid #000;
+                  border-bottom: 2px solid #000;
+                  margin: 6px 0;
                   border-collapse: collapse;
                 }
                 .servicos-table th,
                 .servicos-table td {
-                  padding: 2px 4px;
+                  padding: 2px 3px;
                   font-size: 10px;
+                  font-weight: 900;
+                  color: #000;
                   text-align: left;
                 }
                 .servicos-table th {
                   border-bottom: 1px solid #000;
+                  font-weight: 900;
                 }
                 .text-right {
                   text-align: right;
                 }
                 .totais {
                   font-size: 11px;
-                  margin: 8px 0;
+                  margin: 6px 0;
                 }
                 .totais p {
-                  margin: 2px 0;
+                  margin: 1px 0;
+                  font-weight: bold;
+                  color: #000;
+                }
+                .total-destaque {
+                  font-weight: 900;
+                  color: #000;
                 }
                 .rodape {
                   text-align: center;
-                  border-top: 1px solid #000;
-                  padding-top: 8px;
-                  margin-top: 12px;
+                  border-top: 2px solid #000;
+                  padding-top: 6px;
+                  margin-top: 8px;
                   font-size: 10px;
                 }
                 .rodape p {
-                  margin: 2px 0;
+                  margin: 1px 0;
+                  font-weight: bold;
+                  color: #000;
                 }
                 .selo-pago {
                   text-align: center;
-                  margin-top: 16px;
+                  margin-top: 12px;
                 }
                 .selo-pago span {
-                  font-weight: bold;
-                  font-size: 16px;
-                  color: #2563eb;
+                  font-weight: 900;
+                  font-size: 18px;
+                  color: #000080;
+                  border: 2px solid #000080;
+                  padding: 4px 8px;
+                  border-radius: 4px;
                 }
               </style>
             </head>
             <body>
               <div class="header">
-               <img src="/assets/images/icon.png" alt="Logo" style="width: 40px; height: auto; margin-bottom: 5px;" />
+                <img src="/assets/images/icon.png" alt="Logo" style="width: 35px; height: auto; margin-bottom: 4px;" />
                 <h2>${getDadosFatura().empresa.nome}</h2>
                 <p>NIF: ${getDadosFatura().empresa.nif}</p>
                 <p>${getDadosFatura().empresa.endereco}</p>
@@ -452,9 +475,9 @@ export const useGenerateInvoicePDF = () => {
 
               <div class="aluno">
                 <p><strong>Aluno(a):</strong> ${dadosFatura.aluno.nome}</p>
-                <p>Consumidor Final</p>
-                <p>${dadosFatura.aluno.curso}</p>
-                <p>${dadosFatura.aluno.classe} - ${dadosFatura.aluno.turma}</p>
+                <p><strong>Consumidor Final</strong></p>
+                <p><strong>${dadosFatura.aluno.curso}</strong></p>
+                <p><strong>${dadosFatura.aluno.classe} - ${dadosFatura.aluno.turma}</strong></p>
               </div>
 
               <table class="servicos-table">
@@ -483,12 +506,12 @@ export const useGenerateInvoicePDF = () => {
                 ${dadosFatura.contaBancaria ? `<p>Conta Bancária: ${dadosFatura.contaBancaria}</p>` : ''}
                 ${dadosFatura.numeroBordero ? `<p>Nº Borderô: ${dadosFatura.numeroBordero}</p>` : ''}
                 ${dadosFatura.mesesPagos ? `<p>Meses: ${dadosFatura.mesesPagos}</p>` : ''}
-                <p>Total: ${dadosFatura.subtotal.toLocaleString('pt-AO', { minimumFractionDigits: 2 })}</p>
+                <p class="total-destaque">Total: ${dadosFatura.subtotal.toLocaleString('pt-AO', { minimumFractionDigits: 2 })}</p>
                 <p>Total IVA: ${dadosFatura.iva.toLocaleString('pt-AO', { minimumFractionDigits: 2 })}</p>
                 <p>N.º de Itens: ${dadosFatura.servicos.length}</p>
                 <p>Desconto: ${dadosFatura.desconto.toLocaleString('pt-AO', { minimumFractionDigits: 2 })}</p>
-                <p>A Pagar: ${dadosFatura.totalPagar.toLocaleString('pt-AO', { minimumFractionDigits: 2 })}</p>
-                <p>Total Pago: ${dadosFatura.totalPago.toLocaleString('pt-AO', { minimumFractionDigits: 2 })}</p>
+                <p class="total-destaque">A Pagar: ${dadosFatura.totalPagar.toLocaleString('pt-AO', { minimumFractionDigits: 2 })}</p>
+                <p class="total-destaque">Total Pago: ${dadosFatura.totalPago.toLocaleString('pt-AO', { minimumFractionDigits: 2 })}</p>
                 <p>Pago em Saldo: ${dadosFatura.pagoEmSaldo.toLocaleString('pt-AO', { minimumFractionDigits: 2 })}</p>
                 <p>Saldo Actual: ${dadosFatura.saldoAtual.toLocaleString('pt-AO', { minimumFractionDigits: 2 })}</p>
               </div>
@@ -501,7 +524,7 @@ export const useGenerateInvoicePDF = () => {
               </div>
 
               <div class="selo-pago">
-                <span>[ PAGO ]</span>
+                <span>PAGO</span>
               </div>
             </body>
             </html>
@@ -510,10 +533,9 @@ export const useGenerateInvoicePDF = () => {
           printWindow.document.close();
           printWindow.focus();
           
-          // Aguardar o carregamento e imprimir
+          // Aguardar o carregamento e abrir interface de impressão
           setTimeout(() => {
             printWindow.print();
-            printWindow.close();
           }, 250);
         }
       } else {

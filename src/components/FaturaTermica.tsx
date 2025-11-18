@@ -81,85 +81,108 @@ export default function FaturaTermica({ dadosFatura }: FaturaTermicaProps) {
           <title>Fatura - ${dados.numeroFatura}</title>
           <style>
             @page {
-              size: A6;
-              margin: 5mm;
+              size: 80mm auto;
+              margin: 0;
             }
             body {
               font-family: 'Courier New', monospace;
-              font-size: 10px;
+              font-size: 13px;
+              font-weight: 600;
               line-height: 1.3;
               margin: 0;
-              padding: 5mm;
-              width: calc(105mm - 10mm);
+              padding: 6px;
+              width: 80mm;
               background: white;
-              color: black;
+              color: #000;
             }
             .header {
               text-align: center;
-              border-bottom: 1px solid #000;
-              padding-bottom: 8px;
-              margin-bottom: 8px;
+              border-bottom: 2px solid #000;
+              padding-bottom: 6px;
+              margin-bottom: 6px;
             }
             .header h2 {
               font-size: 14px;
-              font-weight: bold;
-              margin: 0 0 4px 0;
+              font-weight: 900;
+              margin: 0 0 3px 0;
+              color: #000;
             }
             .header p {
-              margin: 2px 0;
+              margin: 1px 0;
               font-size: 11px;
+              font-weight: bold;
+              color: #000;
             }
             .aluno {
-              margin-bottom: 8px;
+              margin-bottom: 6px;
               font-size: 11px;
             }
             .aluno p {
-              margin: 2px 0;
+              margin: 1px 0;
+              font-weight: bold;
+              color: #000;
+            }
+            .aluno p strong {
+              font-weight: 900;
             }
             .servicos-table {
               width: 100%;
-              border-top: 1px solid #000;
-              border-bottom: 1px solid #000;
-              margin: 8px 0;
+              border-top: 2px solid #000;
+              border-bottom: 2px solid #000;
+              margin: 6px 0;
               border-collapse: collapse;
             }
             .servicos-table th,
             .servicos-table td {
-              padding: 2px 4px;
+              padding: 2px 3px;
               font-size: 10px;
+              font-weight: 900;
+              color: #000;
               text-align: left;
             }
             .servicos-table th {
               border-bottom: 1px solid #000;
+              font-weight: 900;
             }
             .text-right {
               text-align: right;
             }
             .totais {
               font-size: 11px;
-              margin: 8px 0;
+              margin: 6px 0;
             }
             .totais p {
-              margin: 2px 0;
+              margin: 1px 0;
+              font-weight: bold;
+              color: #000;
+            }
+            .total-destaque {
+              font-weight: 900;
+              color: #000;
             }
             .rodape {
               text-align: center;
-              border-top: 1px solid #000;
-              padding-top: 8px;
-              margin-top: 12px;
+              border-top: 2px solid #000;
+              padding-top: 6px;
+              margin-top: 8px;
               font-size: 10px;
             }
             .rodape p {
-              margin: 2px 0;
+              margin: 1px 0;
+              font-weight: bold;
+              color: #000;
             }
             .selo-pago {
               text-align: center;
-              margin-top: 16px;
+              margin-top: 12px;
             }
             .selo-pago span {
-              font-weight: bold;
-              font-size: 16px;
-              color: #2563eb;
+              font-weight: 900;
+              font-size: 18px;
+              color: #000080;
+              border: 2px solid #000080;
+              padding: 4px 8px;
+              border-radius: 4px;
             }
             @media print {
               body {
@@ -171,20 +194,20 @@ export default function FaturaTermica({ dadosFatura }: FaturaTermicaProps) {
         </head>
         <body>
           <div class="header">
-            <img src="/assets/images/icon.png" alt="Logo" style="width: 40px; height: auto; margin-bottom: 5px;" />
+            <img src="/assets/images/icon.png" alt="Logo" style="width: 35px; height: auto; margin-bottom: 4px;" />
             <h2>${dadosEmpresa.empresa.nome}</h2>
             <p>NIF: ${dadosEmpresa.empresa.nif}</p>
             <p>${dadosEmpresa.empresa.endereco}</p>
-            <p>Tlf: ${dadosEmpresa.empresa.telefone}</p>
+            <p>Tlf: ${dadosEmpresa.empresa.telefones.join(' | ')}</p>
             <p>Data: ${dados.dataEmissao}</p>
             <p>Fatura: ${dados.numeroFatura}</p>
           </div>
 
           <div class="aluno">
             <p><strong>Aluno(a):</strong> ${dados.aluno.nome}</p>
-            <p>Consumidor Final</p>
-            <p>${dados.aluno.curso}</p>
-            <p>${dados.aluno.classe} - ${dados.aluno.turma}</p>
+            <p><strong>Consumidor Final</strong></p>
+            <p><strong>${dados.aluno.curso}</strong></p>
+            <p><strong>${dados.aluno.classe} - ${dados.aluno.turma}</strong></p>
           </div>
 
           <table class="servicos-table">
@@ -210,12 +233,12 @@ export default function FaturaTermica({ dadosFatura }: FaturaTermicaProps) {
 
           <div class="totais">
             <p>Forma de Pagamento: ${dados.formaPagamento}</p>
-            <p>Total: ${formatarMoeda(dados.subtotal)}</p>
+            <p class="total-destaque">Total: ${formatarMoeda(dados.subtotal)}</p>
             <p>Total IVA: ${formatarMoeda(dados.iva)}</p>
             <p>N.º de Itens: ${dados.servicos.length}</p>
             <p>Desconto: ${formatarMoeda(dados.desconto)}</p>
-            <p>A Pagar: ${formatarMoeda(dados.totalPagar)}</p>
-            <p>Total Pago: ${formatarMoeda(dados.totalPago)}</p>
+            <p class="total-destaque">A Pagar: ${formatarMoeda(dados.totalPagar)}</p>
+            <p class="total-destaque">Total Pago: ${formatarMoeda(dados.totalPago)}</p>
             <p>Pago em Saldo: ${formatarMoeda(dados.pagoEmSaldo)}</p>
             <p>Saldo Actual: ${formatarMoeda(dados.saldoAtual)}</p>
           </div>
@@ -228,7 +251,7 @@ export default function FaturaTermica({ dadosFatura }: FaturaTermicaProps) {
           </div>
 
           <div class="selo-pago">
-            <span>[ PAGO ]</span>
+            <span>PAGO</span>
           </div>
         </body>
         </html>
@@ -273,7 +296,7 @@ export default function FaturaTermica({ dadosFatura }: FaturaTermicaProps) {
           <h2 className="font-bold text-base mb-1">{dadosEmpresa.empresa.nome}</h2>
           <p className="text-xs">NIF: {dadosEmpresa.empresa.nif}</p>
           <p className="text-xs">{dadosEmpresa.empresa.endereco}</p>
-          <p className="text-xs">Tlf: {dadosEmpresa.empresa.telefone}</p>
+          <p className="text-xs">Tlf: {dadosEmpresa.empresa.telefones.join(' | ')}</p>
           <p className="text-xs">Data: {dados.dataEmissao}</p>
           <p className="text-xs">Fatura: {dados.numeroFatura}</p>
         </div>

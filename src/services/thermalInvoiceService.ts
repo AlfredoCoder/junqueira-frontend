@@ -45,25 +45,25 @@ export class ThermalInvoiceService {
       });
 
       const pageWidth = 80;
-      const margin = 3;
-      let yPosition = 5;
+      const margin = 4; // Margem maior para melhor legibilidade
+      let yPosition = 6;
       
       // Adicionar logo
       yPosition = await this.addLogo(doc, pageWidth, yPosition);
 
-      // Configurar fonte monoespaçada
-      doc.setFont('courier', 'normal');
+      // Configurar fonte monoespaçada com tamanho maior e fonte bold
+      doc.setFont('courier', 'bold'); // Força bold por padrão
       // Cabeçalho
-      doc.setFontSize(8);
-      doc.setFont('courier', 'bold');
+      doc.setFontSize(11); // Aumentado de 10 para 11
       
       // Nome da escola (centralizado)
       const dadosEmpresa = getDadosFatura();
       doc.text(dadosEmpresa.empresa.nome, pageWidth / 2, yPosition, { align: 'center' });
-      yPosition += 4;
+      yPosition += 5;
 
-      // Voltar para fonte normal
-      doc.setFont('courier', 'normal');
+      // Manter fonte bold para melhor contraste
+      doc.setFont('courier', 'bold');
+      doc.setFontSize(9); // Aumentado de 8 para 9
       
       // Dados da escola
       const schoolInfo = [
@@ -75,29 +75,29 @@ export class ThermalInvoiceService {
 
       schoolInfo.forEach(info => {
         doc.text(info, pageWidth / 2, yPosition, { align: 'center' });
-        yPosition += 3;
+        yPosition += 4; // Espaçamento aumentado
       });
 
       // Linha separadora
-      yPosition += 2;
-      doc.text('='.repeat(35), pageWidth / 2, yPosition, { align: 'center' });
-      yPosition += 4;
+      yPosition += 3;
+      doc.text('='.repeat(30), pageWidth / 2, yPosition, { align: 'center' }); // Ajustado para 80mm
+      yPosition += 5;
 
       // Dados do Aluno
-      doc.setFontSize(6);
+      doc.setFontSize(9); // Aumentado de 8 para 9
       doc.setFont('courier', 'bold');
       doc.text(`Aluno(a): ${data.pagamento.aluno.nome}`, margin, yPosition);
-      yPosition += 3;
+      yPosition += 4;
 
-      doc.setFont('courier', 'normal');
+      doc.setFont('courier', 'bold'); // Manter bold
       doc.text('Consumidor Final', margin, yPosition);
-      yPosition += 3;
+      yPosition += 4;
 
       // Curso e turma
       const curso = data.pagamento.aluno.tb_matriculas?.tb_cursos?.designacao;
       if (curso) {
         doc.text(curso, margin, yPosition);
-        yPosition += 3;
+        yPosition += 4;
       }
 
       const confirmacao = data.pagamento.aluno.tb_matriculas?.tb_confirmacoes?.[0];
@@ -106,44 +106,45 @@ export class ThermalInvoiceService {
       
       if (classe && turma) {
         doc.text(`${classe} - ${turma}`, margin, yPosition);
-        yPosition += 3;
+        yPosition += 4;
       }
 
       if (data.pagamento.aluno.n_documento_identificacao) {
         doc.text(`Doc: ${data.pagamento.aluno.n_documento_identificacao}`, margin, yPosition);
-        yPosition += 3;
+        yPosition += 4;
       }
 
-      yPosition += 2;
+      yPosition += 3;
 
       // Tabela de serviços
-      doc.text('-'.repeat(35), pageWidth / 2, yPosition, { align: 'center' });
-      yPosition += 3;
+      doc.text('-'.repeat(30), pageWidth / 2, yPosition, { align: 'center' }); // Ajustado para 80mm
+      yPosition += 4;
 
       // Cabeçalho da tabela
       doc.setFont('courier', 'bold');
       doc.text('Servicos', margin, yPosition);
-      doc.text('Qtd', 45, yPosition);
-      doc.text('P.Unit', 55, yPosition);
-      doc.text('Total', 68, yPosition);
-      yPosition += 3;
-
-      doc.text('-'.repeat(35), pageWidth / 2, yPosition, { align: 'center' });
-      yPosition += 3;
-
-      // Linha do serviço
-      doc.setFont('courier', 'normal');
-      const serviceName = this.truncateText(data.pagamento.tipoServico.designacao, 20);
-      doc.text(serviceName, margin, yPosition);
-      doc.text('1', 47, yPosition);
-      doc.text(this.formatCurrency(data.pagamento.preco), 55, yPosition);
-      doc.text(this.formatCurrency(data.pagamento.preco), 68, yPosition);
-      yPosition += 3;
-
-      doc.text('-'.repeat(35), pageWidth / 2, yPosition, { align: 'center' });
+      doc.text('Qtd', 42, yPosition); // Ajustado para 80mm
+      doc.text('P.Unit', 52, yPosition); // Ajustado para 80mm
+      doc.text('Total', 65, yPosition); // Ajustado para 80mm
       yPosition += 4;
 
+      doc.text('-'.repeat(30), pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 4;
+
+      // Linha do serviço
+      doc.setFont('courier', 'bold'); // Mudar para bold
+      const serviceName = this.truncateText(data.pagamento.tipoServico.designacao, 18); // Reduzido para 80mm
+      doc.text(serviceName, margin, yPosition);
+      doc.text('1', 44, yPosition);
+      doc.text(this.formatCurrency(data.pagamento.preco), 52, yPosition);
+      doc.text(this.formatCurrency(data.pagamento.preco), 65, yPosition);
+      yPosition += 4;
+
+      doc.text('-'.repeat(30), pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 5;
+
       // Totais
+      doc.setFont('courier', 'bold'); // Usar bold para todos os totais
       const totals = [
         `Forma de Pagamento: ${data.pagamento.formaPagamento.designacao}`,
         `Total: ${this.formatCurrency(data.pagamento.preco)}`,
@@ -158,26 +159,27 @@ export class ThermalInvoiceService {
 
       totals.forEach(total => {
         doc.text(total, margin, yPosition);
-        yPosition += 3;
+        yPosition += 4; // Espaçamento aumentado
       });
 
       // Observações
       if (data.pagamento.observacao) {
-        yPosition += 2;
-        doc.text('-'.repeat(35), pageWidth / 2, yPosition, { align: 'center' });
         yPosition += 3;
+        doc.text('-'.repeat(30), pageWidth / 2, yPosition, { align: 'center' });
+        yPosition += 4;
         doc.setFont('courier', 'bold');
         doc.text(`Obs: ${data.pagamento.observacao}`, margin, yPosition);
-        yPosition += 3;
+        yPosition += 4;
       }
 
-      yPosition += 2;
-
-      // Rodapé
-      doc.text('='.repeat(35), pageWidth / 2, yPosition, { align: 'center' });
       yPosition += 3;
 
-      doc.setFontSize(5);
+      // Rodapé
+      doc.text('='.repeat(30), pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 4;
+
+      doc.setFontSize(8); // Aumentado de 7 para 8
+      doc.setFont('courier', 'bold'); // Usar bold para o rodapé também
       const footer = [
         `Operador: ${data.operador || 'Sistema'}`,
         `Emitido em: ${this.formatDateTime(data.pagamento.data)}`,
@@ -188,13 +190,13 @@ export class ThermalInvoiceService {
 
       footer.forEach(info => {
         doc.text(info, pageWidth / 2, yPosition, { align: 'center' });
-        yPosition += 2.5;
+        yPosition += 3.5; // Espaçamento aumentado
       });
 
-      yPosition += 3;
+      yPosition += 4;
 
       // Selo de PAGO
-      doc.setFontSize(10);
+      doc.setFontSize(14); // Aumentado de 12 para 14
       doc.setFont('courier', 'bold');
       doc.text('[ PAGO ]', pageWidth / 2, yPosition, { align: 'center' });
 
